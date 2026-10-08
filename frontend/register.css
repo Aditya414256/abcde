@@ -1,0 +1,141 @@
+/* ============================= */
+/* REGISTER PAGE */
+/* ============================= */
+
+body {
+    margin: 0;
+    background: #f8fafc;
+}
+
+
+/* ============================= */
+/* REGISTER CONTAINER */
+/* ============================= */
+
+.register-page {
+
+    min-height: calc(100vh - 72px);
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    padding: 40px 20px;
+
+    box-sizing: border-box;
+}
+
+
+/* ============================= */
+/* REGISTER OPTIONS */
+/* ============================= */
+
+.register-options {
+
+    width: 100%;
+    max-width: 500px;
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 18px;
+}
+
+
+/* ============================= */
+/* REGISTER BUTTON */
+/* ============================= */
+
+.register-option {
+
+    width: 100%;
+
+    padding: 18px 24px;
+
+    border-radius: 10px;
+
+    border: 1px solid transparent;
+
+    font-family: 'Plus Jakarta Sans', sans-serif;
+
+    font-size: 1rem;
+
+    font-weight: 600;
+
+    cursor: pointer;
+
+    text-align: center;
+
+    transition: all 0.2s ease;
+}
+
+
+/* ============================= */
+/* CUSTOMER */
+/* ============================= */
+
+.customer-option {
+
+    background: #0284c7;
+
+    color: #ffffff;
+}
+
+
+.customer-option:hover {
+
+    background: #0369a1;
+
+    transform: translateY(-1px);
+
+    box-shadow:
+        0 6px 16px rgba(2, 132, 199, 0.30);
+}
+
+
+/* ============================= */
+/* PHARMACY */
+/* ============================= */
+
+.pharmacy-option {
+
+    background: #059669;
+
+    color: #ffffff;
+}
+
+
+.pharmacy-option:hover {
+
+    background: #047857;
+
+    transform: translateY(-1px);
+
+    box-shadow:
+        0 6px 16px rgba(5, 150, 105, 0.25);
+}
+
+
+/* ============================= */
+/* MOBILE */
+/* ============================= */
+
+@media (max-width: 500px) {
+
+    .register-page {
+
+        padding: 30px 15px;
+
+    }
+
+    .register-option {
+
+        font-size: 0.9rem;
+
+        padding: 15px 18px;
+
+    }
+
+}

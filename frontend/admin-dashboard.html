@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="HomePage.css">
+    <title>Admin Portal - MediFind</title>
+</head>
+<body>
+
+    <!-- NAVBAR -->
+    <div class="container">
+        <div class="section1">
+            <div class="logo">
+                <div class="logo-icon">+</div>
+                <span>MediFind</span>
+            </div>
+        </div>
+
+        <div class="section2">
+            <button class="home" onclick="window.location.href='HomePage.html'">Home</button>
+            <button class="pharmacies" onclick="window.location.href='Pharmacies.html'">Pharmacies</button>
+        </div>
+
+        <div class="section3">
+            <button class="login" onclick="window.location.href='login.html'">Login</button>
+            <button class="register" onclick="window.location.href='register.html'">Register</button>
+        </div>
+    </div>
+
+    <!-- MAIN ADMIN AREA -->
+    <main style="max-width:1100px; margin:30px auto 60px; padding:0 20px; font-family:'Plus Jakarta Sans',sans-serif;">
+
+        <div style="margin-bottom:25px;">
+            <h1 style="font-family:'Space Grotesk',sans-serif; font-size:2rem; color:#0f172a; margin:0 0 6px;">
+                MediFind Admin Portal
+            </h1>
+            <p style="color:#64748b; font-size:0.95rem; margin:0;">
+                Review registered pharmacies, verify drug licenses, and manage store activations.
+            </p>
+        </div>
+
+        <!-- STATS OVERVIEW CARDS -->
+        <div id="admin-stats-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:18px; margin-bottom:35px;">
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:20px; box-shadow:0 2px 6px rgba(0,0,0,0.03);">
+                <div style="font-size:0.8rem; color:#64748b; font-weight:700; text-transform:uppercase;">Total Pharmacies</div>
+                <div id="stat-pharmacies" style="font-family:'Space Grotesk',sans-serif; font-size:1.8rem; font-weight:700; color:#0f172a; margin-top:4px;">-</div>
+            </div>
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:20px; box-shadow:0 2px 6px rgba(0,0,0,0.03);">
+                <div style="font-size:0.8rem; color:#b45309; font-weight:700; text-transform:uppercase;">Pending Verification</div>
+                <div id="stat-pending" style="font-family:'Space Grotesk',sans-serif; font-size:1.8rem; font-weight:700; color:#b45309; margin-top:4px;">-</div>
+            </div>
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:20px; box-shadow:0 2px 6px rgba(0,0,0,0.03);">
+                <div style="font-size:0.8rem; color:#059669; font-weight:700; text-transform:uppercase;">Verified Pharmacies</div>
+                <div id="stat-verified" style="font-family:'Space Grotesk',sans-serif; font-size:1.8rem; font-weight:700; color:#059669; margin-top:4px;">-</div>
+            </div>
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:20px; box-shadow:0 2px 6px rgba(0,0,0,0.03);">
+                <div style="font-size:0.8rem; color:#0284c7; font-weight:700; text-transform:uppercase;">Total Orders Placed</div>
+                <div id="stat-orders" style="font-family:'Space Grotesk',sans-serif; font-size:1.8rem; font-weight:700; color:#0284c7; margin-top:4px;">-</div>
+            </div>
+        </div>
+
+        <!-- PHARMACIES VERIFICATION LIST -->
+        <section>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h2 style="font-family:'Space Grotesk',sans-serif; font-size:1.4rem; color:#0f172a; margin:0;">
+                    Registered Pharmacy Licensure
+                </h2>
+                <button class="login" onclick="loadAdminData()" style="font-size:0.8rem; padding:6px 12px;">
+                    🔄 Refresh List
+                </button>
+            </div>
+
+            <div id="admin-pharmacies-list" style="display:flex; flex-direction:column; gap:16px;">
+                <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:30px; text-align:center; color:#64748b;">
+                    Loading pharmacy list...
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="js/api.js"></script>
+    <script src="js/navbar.js"></script>
+    <script src="js/admin-portal.js"></script>
+</body>
+</html>

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap"
+        rel="stylesheet"
+    >
+
+    <link rel="stylesheet" href="HomePage.css">
+    <link rel="stylesheet" href="Pharmacies.css">
+
+    <title>Pharmacies - MediFind</title>
+
+</head>
+
+<body>
+
+    <!-- NAVBAR -->
+
+    <div class="container">
+
+        <div class="section1">
+
+            <div class="logo">
+
+                <div class="logo-icon">
+                    +
+                </div>
+
+                <span>
+                    MediFind
+                </span>
+
+            </div>
+
+        </div>
+
+
+        <div class="section2">
+
+            <button class="home"
+                onclick="window.location.href='HomePage.html'">
+                Home
+            </button>
+
+            <button class="find-medicine"
+                onclick="window.location.href='FindMedi.html'">
+                Find Medicine
+            </button>
+
+            <button class="pharmacies">
+                Pharmacies
+            </button>
+
+        </div>
+
+
+        <div class="section3">
+
+            <button class="login"
+                onclick="window.location.href='login.html'">
+                Login
+            </button>
+
+            <button class="register"
+                onclick="window.location.href='register.html'">
+                Register
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- PHARMACIES -->
+
+    <section class="Pharmacies">
+
+        <div class="pharmacy-heading">
+
+            <h1>
+                Verified Pharmacies
+            </h1>
+
+            <p>
+                Discover verified pharmacies and explore their medicine availability.
+            </p>
+
+        </div>
+
+
+        <!-- PHARMACY LIST -->
+
+        <div class="pharmacy-list">
+            <!-- Dynamically populated from database via pharmacies.js -->
+        </div>
+
+    </section>
+
+    <script src="js/api.js"></script>
+    <script src="js/navbar.js"></script>
+    <script src="js/pharmacies.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap"
+        rel="stylesheet"
+    >
+
+    <link rel="stylesheet" href="HomePage.css">
+    <link rel="stylesheet" href="login.css">
+
+    <title>Login - MediFind</title>
+
+</head>
+
+<body>
+
+    <!-- ============================= -->
+    <!-- NAVBAR -->
+    <!-- ============================= -->
+
+    <div class="container">
+
+        <div class="section1">
+
+            <div class="logo">
+
+                <div class="logo-icon">
+                    +
+                </div>
+
+                <span>
+                    MediFind
+                </span>
+
+            </div>
+
+        </div>
+
+
+        <div class="section2">
+
+            <button
+                class="home"
+                onclick="window.location.href='HomePage.html'"
+            >
+                Home
+            </button>
+
+            <button
+                class="find-medicine"
+                onclick="window.location.href='FindMedi.html'"
+            >
+                Find Medicine
+            </button>
+
+            <button
+                class="pharmacies"
+                onclick="window.location.href='Pharmacies.html'"
+            >
+                Pharmacies
+            </button>
+
+        </div>
+
+
+        <div class="section3">
+
+            <button class="login">
+                Login
+            </button>
+
+            <button
+                class="register"
+                onclick="window.location.href='register.html'"
+            >
+                Register
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- ============================= -->
+    <!-- LOGIN -->
+    <!-- ============================= -->
+
+    <section class="Login">
+
+        <div class="login-card">
+
+            <!-- ============================= -->
+            <!-- LOGIN FORM -->
+            <!-- ============================= -->
+
+            <div class="login-form-container">
+
+                <form>
+
+                    <!-- EMAIL -->
+
+                    <div class="form-group">
+
+                        <label for="login-email">
+                            Email Address
+                        </label>
+
+                        <input
+                            type="email"
+                            id="login-email"
+                            placeholder=""
+                            required
+                        >
+
+                    </div>
+
+
+                    <!-- PASSWORD -->
+
+                    <div class="form-group password-group">
+
+                        <div class="password-label">
+
+                            <label for="login-password">
+                                Password
+                            </label>
+
+                            <a href="#">
+                                Forgot Password?
+                            </a>
+
+                        </div>
+
+
+                        <input
+                            type="password"
+                            id="login-password"
+                            placeholder=""
+                            required
+                        >
+
+                    </div>
+
+
+                    <!-- SIGN IN -->
+
+                    <button
+                        type="submit"
+                        class="sign-in-button"
+                    >
+                        Sign In
+                    </button>
+
+                </form>
+
+            </div>
+
+
+            <!-- ============================= -->
+            <!-- REGISTER LINK -->
+            <!-- ============================= -->
+
+            <div class="login-footer">
+
+                Don't have an account?
+
+                <a href="register.html">
+                    Sign Up
+                </a>
+
+            </div>
+
+        </div>
+
+    </section>
+
+    <script src="js/api.js"></script>
+    <script src="js/navbar.js"></script>
+    <script src="js/auth.js"></script>
+
+</body>
+
+</html>

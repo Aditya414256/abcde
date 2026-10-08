@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap"
+        rel="stylesheet"
+    >
+
+    <link rel="stylesheet" href="HomePage.css">
+    <link rel="stylesheet" href="register.css">
+
+    <title>Register - MediFind</title>
+
+</head>
+
+<body>
+
+    <!-- ============================= -->
+    <!-- NAVBAR -->
+    <!-- ============================= -->
+
+    <div class="container">
+
+        <div class="section1">
+
+            <div class="logo">
+
+                <div class="logo-icon">
+                    +
+                </div>
+
+                <span>
+                    MediFind
+                </span>
+
+            </div>
+
+        </div>
+
+
+        <div class="section2">
+
+            <button
+                class="home"
+                onclick="window.location.href='HomePage.html'"
+            >
+                Home
+            </button>
+
+            <button
+                class="find-medicine"
+                onclick="window.location.href='FindMedi.html'"
+            >
+                Find Medicine
+            </button>
+
+            <button
+                class="pharmacies"
+                onclick="window.location.href='Pharmacies.html'"
+            >
+                Pharmacies
+            </button>
+
+        </div>
+
+
+        <div class="section3">
+
+            <button
+                class="login"
+                onclick="window.location.href='login.html'"
+            >
+                Login
+            </button>
+
+            <button class="register">
+                Register
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- ============================= -->
+    <!-- REGISTER OPTIONS -->
+    <!-- ============================= -->
+
+    <section class="register-page">
+
+        <div class="register-options">
+
+            <button
+                class="register-option customer-option"
+                onclick="window.location.href='register-customer.html'"
+            >
+                Register as Customer
+            </button>
+
+
+            <button
+                class="register-option pharmacy-option"
+                onclick="window.location.href='register-pharmacy.html'"
+            >
+                Register as Pharmacy
+            </button>
+
+        </div>
+
+    </section>
+
+    <script src="js/api.js"></script>
+    <script src="js/navbar.js"></script>
+
+</body>
+
+</html>

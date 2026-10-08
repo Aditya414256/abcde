@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="HomePage.css">
+
+    <title>MediFind</title>
+</head>
+
+<body>
+
+    <div class="container">
+
+        <div class="section1">
+            <div class="logo">
+                <div class="logo-icon">+</div>
+                <span>MediFind</span>
+            </div>
+        </div>
+
+        <div class="section2">
+            <button class="home" onclick="window.location.href='HomePage.html'">
+                Home
+            </button>
+
+            <button class="find-medicine" onclick="window.location.href='FindMedi.html'">
+                Find Medicine
+            </button>
+
+            <button class="pharmacies" onclick="window.location.href='Pharmacies.html'">
+                Pharmacies
+            </button>
+        </div>
+
+        <div class="section3">
+            <button class="login" onclick="window.location.href='login.html'">
+                Login
+            </button>
+
+            <button class="register" onclick="window.location.href='register.html'">
+                Register
+            </button>
+        </div>
+
+    </div>
+
+
+    <section class="web-intro">
+
+        <h1>
+            Find your medicine.<br>
+            Find a <span>verified pharmacy</span>.
+        </h1>
+
+        <p>
+            Search medicines and discover verified pharmacies through MediFind.
+        </p>
+
+    </section>
+
+
+    <section class="search-section">
+
+        <div class="search-wrapper">
+
+            <form class="search-bar" onsubmit="goToFindMedicine(event)">
+
+                <div class="search-input-group">
+
+                    <span class="search-icon">⌕</span>
+
+                    <input
+                        class="search-input"
+                        id="home-search-input"
+                        type="text"
+                        placeholder="Search medicine or generic name..."
+                        autocomplete="off"
+                    >
+
+                </div>
+
+                <button class="search-button" type="submit">
+                    Search
+                </button>
+
+            </form>
+
+        </div>
+
+    </section>
+
+    <script src="js/api.js"></script>
+    <script src="js/navbar.js"></script>
+    <script src="js/home.js"></script>
+
+</body>
+</html>

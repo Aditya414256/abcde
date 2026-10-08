@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap"
+        rel="stylesheet"
+    >
+
+    <!-- Navbar CSS -->
+    <link rel="stylesheet" href="HomePage.css">
+
+    <!-- Find Medicine CSS -->
+    <link rel="stylesheet" href="FindMedi.css">
+
+    <title>Find Medicine - MediFind</title>
+
+</head>
+
+<body>
+
+    <!-- NAVBAR -->
+
+    <div class="container">
+
+        <div class="section1">
+
+            <div class="logo">
+
+                <div class="logo-icon">
+                    +
+                </div>
+
+                <span>
+                    MediFind
+                </span>
+
+            </div>
+
+        </div>
+
+
+        <div class="section2">
+
+            <button class="home"
+                onclick="window.location.href='HomePage.html'">
+                Home
+            </button>
+
+            <button class="find-medicine">
+                Find Medicine
+            </button>
+
+            <button class="pharmacies"
+                onclick="window.location.href='Pharmacies.html'">
+                Pharmacies
+            </button>
+
+          
+
+        </div>
+
+
+        <div class="section3">
+
+            <button class="login"
+                onclick="window.location.href='login.html'">
+                Login
+            </button>
+
+            <button class="register"
+                onclick="window.location.href='register.html'">
+                Register
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- FIND MEDICINE -->
+
+    <section class="FindMedi">
+
+        <div class="page-heading">
+
+
+        </div>
+
+
+        <!-- SEARCH -->
+
+        <div class="medicine-search">
+
+            <input
+                type="text"
+                placeholder="Medicine or generic..."
+            >
+
+            <button class="search-medicine-button">
+                Search
+            </button>
+
+        </div>
+
+
+        <!-- RESULTS -->
+
+        <main class="medicine-results">
+
+
+            <!-- MEDICINE CARD -->
+
+            <div class="medicine-card">
+
+                <div class="medicine-details">
+
+                    <div class="medicine-badges">
+
+                        <span class="badge">
+                            Tablet
+                        </span>
+
+                        <span class="badge badge-primary">
+                            500mg
+                        </span>
+
+                        <span class="badge badge-success">
+                            ✓ OTC
+                        </span>
+
+                    </div>
+
+
+                    <h3>
+                        Paracetamol
+                    </h3>
+
+                    <div class="medicine-generic">
+
+                        <strong>Generic:</strong>
+                        Paracetamol
+
+                    </div>
+
+
+                    <div class="medicine-description">
+
+                        Medicine used for pain relief and fever reduction.
+
+                    </div>
+
+
+                    <div class="pharmacy-count">
+
+                        ✓ Found in verified nearby pharmacies
+
+                    </div>
+
+                </div>
+
+
+                <div class="medicine-action">
+
+                    <button class="view-stores-button">
+                        View Stores
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <!-- MEDICINE CARD -->
+
+            <div class="medicine-card">
+
+                <div class="medicine-details">
+
+                    <div class="medicine-badges">
+
+                        <span class="badge">
+                            Tablet
+                        </span>
+
+                        <span class="badge badge-primary">
+                            200mg
+                        </span>
+
+                        <span class="badge badge-success">
+                            ✓ OTC
+                        </span>
+
+                    </div>
+
+
+                    <h3>
+                        Ibuprofen
+                    </h3>
+
+
+                    <div class="medicine-generic">
+
+                        <strong>Generic:</strong>
+                        Ibuprofen
+
+                    </div>
+
+
+                    <div class="medicine-description">
+
+                        Medicine used for pain relief and inflammation.
+
+                    </div>
+
+
+                    <div class="pharmacy-count">
+
+                        ✓ Found in verified nearby pharmacies
+
+                    </div>
+
+                </div>
+
+
+                <div class="medicine-action">
+
+                    <button class="view-stores-button">
+                        View Stores
+                    </button>
+
+                </div>
+
+            </div>
+
+        </main>
+
+    </section>
+
+    <script src="js/api.js"></script>
+    <script src="js/navbar.js"></script>
+    <script src="js/selection.js"></script>
+
+</body>
+</html>

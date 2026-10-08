@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap"
+        rel="stylesheet"
+    >
+
+    <!-- Font Awesome -->
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    >
+
+    <!-- Navbar -->
+    <link rel="stylesheet" href="HomePage.css">
+
+    <!-- Pharmacy Registration -->
+    <link rel="stylesheet" href="register-pharmacy.css">
+
+    <title>Pharmacy Registration - MediFind</title>
+
+</head>
+
+<body>
+
+    <!-- ============================= -->
+    <!-- NAVBAR -->
+    <!-- ============================= -->
+
+    <div class="container">
+
+        <div class="section1">
+
+            <div class="logo">
+
+                <div class="logo-icon">
+                    +
+                </div>
+
+                <span>
+                    MediFind
+                </span>
+
+            </div>
+
+        </div>
+
+
+        <div class="section2">
+
+            <button
+                class="home"
+                onclick="window.location.href='HomePage.html'"
+            >
+                Home
+            </button>
+
+            <button
+                class="find-medicine"
+                onclick="window.location.href='FindMedi.html'"
+            >
+                Find Medicine
+            </button>
+
+            <button
+                class="pharmacies"
+                onclick="window.location.href='Pharmacies.html'"
+            >
+                Pharmacies
+            </button>
+
+        </div>
+
+
+        <div class="section3">
+
+            <button
+                class="login"
+                onclick="window.location.href='login.html'"
+            >
+                Login
+            </button>
+
+            <button
+                class="register"
+                onclick="window.location.href='register.html'"
+            >
+                Register
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- ============================= -->
+    <!-- PHARMACY REGISTRATION -->
+    <!-- ============================= -->
+
+    <main class="pharmacy-register-page">
+
+        <div class="pharmacy-register-container">
+
+            <div class="pharmacy-card">
+
+                <!-- HEADER -->
+
+                <div class="pharmacy-card-header">
+
+                    <div class="pharmacy-brand-icon">
+
+                        <i class="fa-solid fa-store"></i>
+
+                    </div>
+
+
+                    <h2>
+                        Register Your Pharmacy
+                    </h2>
+
+
+                    <p>
+                        
+                    </p>
+
+                </div>
+
+
+                <!-- FORM BODY -->
+
+                <div class="pharmacy-card-body">
+
+                    <form>
+
+                        <!-- ============================= -->
+                        <!-- OWNER ACCOUNT -->
+                        <!-- ============================= -->
+
+                        <h4 class="section-title owner-title">
+
+                            <i class="fa-solid fa-user"></i>
+
+                            Pharmacy Owner Account
+
+                        </h4>
+
+
+                        <div class="two-column">
+
+                            <div class="form-group">
+
+                                <label
+                                    class="form-label"
+                                    for="full_name"
+                                >
+                                    Owner Full Name *
+                                </label>
+
+                                <input
+                                    type="text"
+                                    name="full_name"
+                                    id="full_name"
+                                    class="form-control"
+                                    placeholder=""
+                                    required
+                                >
+
+                            </div>
+
+
+                            <div class="form-group">
+
+                                <label
+                                    class="form-label"
+                                    for="email"
+                                >
+                                    Account Email *
+                                </label>
+
+                                <input
+                                    type="email"
+                                    name="email"
+                                    id="email"
+                                    class="form-control"
+                                    placeholder=""
+                                    required
+                                >
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="two-column">
+
+                            <div class="form-group">
+
+                                <label
+                                    class="form-label"
+                                    for="password"
+                                >
+                                    Password *
+                                </label>
+
+                                <input
+                                    type="password"
+                                    name="password"
+                                    id="password"
+                                    class="form-control"
+                                    placeholder=""
+                                    
+                
+                                >
+
+                            </div>
+
+
+                            <div class="form-group">
+
+                                <label
+                                    class="form-label"
+                                    for="confirm_password"
+                                >
+                                    Confirm Password *
+                                </label>
+
+                                <input
+                                    type="password"
+                                    name="confirm_password"
+                                    id="confirm_password"
+                                    class="form-control"
+                                    placeholder=""
+                                    required
+                                    minlength="6"
+                                >
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- ============================= -->
+                        <!-- PHARMACY DETAILS -->
+                        <!-- ============================= -->
+
+                        <h4 class="section-title pharmacy-title">
+
+                            <i class="fa-solid fa-prescription-bottle-medical"></i>
+
+                            Pharmacy & Licensure Details
+
+                        </h4>
+
+
+                        <div class="two-column">
+
+                            <div class="form-group">
+
+                                <label
+                                    class="form-label"
+                                    for="pharmacy_name"
+                                >
+                                    Pharmacy Store Name *
+                                </label>
+
+                                <input
+                                    type="text"
+                                    name="pharmacy_name"
+                                    id="pharmacy_name"
+                                    class="form-control"
+                                    placeholder=""
+                                    required
+                                >
+
+                            </div>
+
+
+                            <div class="form-group">
+
+                                <label
+                                    class="form-label"
+                                    for="license_number"
+                                >
+                                    Drug License / Registration No. *
+                                </label>
+
+                                <input
+                                    type="text"
+                                    name="license_number"
+                                    id="license_number"
+                                    class="form-control"
+                                    placeholder="DL-2024-XXXX-XXXX"
+                                    required
+                                >
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- ============================= -->
+                        <!-- PHARMACY PHONE & EMAIL -->
+                        <!-- ============================= -->
+
+                        <div class="two-column">
+
+                            <div class="form-group">
+
+                                <label
+                                    class="form-label"
+                                    for="pharmacy_phone"
+                                >
+                                    Pharmacy Phone Number
+                                </label>
+
+                                <input
+                                    type="tel"
+                                    name="pharmacy_phone"
+                                    id="pharmacy_phone"
+                                    class="form-control"
+                                    placeholder=""
+                                >
+
+                            </div>
+
+
+                            <div class="form-group">
+
+                                <label
+                                    class="form-label"
+                                    for="pharmacy_email"
+                                >
+                                    Pharmacy Email
+                                </label>
+
+                                <input
+                                    type="email"
+                                    name="pharmacy_email"
+                                    id="pharmacy_email"
+                                    class="form-control"
+                                    placeholder=""
+                                >
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- ============================= -->
+                        <!-- ADDRESS -->
+                        <!-- ============================= -->
+
+                        <div class="form-group">
+
+                            <label
+                                class="form-label"
+                                for="address"
+                            >
+                                Street Address *
+                            </label>
+
+                            <input
+                                type="text"
+                                name="address"
+                                id="address"
+                                class="form-control"
+                                placeholder=""
+                                required
+                            >
+
+                        </div>
+
+
+                        <!-- ============================= -->
+                        <!-- CITY / STATE / PINCODE -->
+                        <!-- ============================= -->
+
+                        <div class="three-column">
+
+                            <div class="form-group">
+
+                                <label
+                                    class="form-label"
+                                    for="city"
+                                >
+                                    City *
+                                </label>
+
+                                <input
+                                    type="text"
+                                    name="city"
+                                    id="city"
+                                    class="form-control"
+                                    placeholder=""
+                                    required
+                                >
+
+                            </div>
+
+
+                            <div class="form-group">
+
+                                <label
+                                    class="form-label"
+                                    for="state"
+                                >
+                                    State *
+                                </label>
+
+                                <input
+                                    type="text"
+                                    name="state"
+                                    id="state"
+                                    class="form-control"
+                                    placeholder=""
+                                    required
+                                >
+
+                            </div>
+
+
+                            <div class="form-group">
+
+                                <label
+                                    class="form-label"
+                                    for="pincode"
+                                >
+                                    Pincode / Postal *
+                                </label>
+
+                                <input
+                                    type="text"
+                                    name="pincode"
+                                    id="pincode"
+                                    class="form-control"
+                                    placeholder=""
+                                    required
+                                >
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- ============================= -->
+                        <!-- SERVICES -->
+                        <!-- ============================= -->
+
+                        <div class="service-options">
+
+                            <label class="service-option">
+
+                                <input
+                                    type="checkbox"
+                                    name="supports_pickup"
+                                    id="supports_pickup"
+                                    checked
+                                >
+
+                                <span>
+                                    Store Pickup Supported
+                                </span>
+
+                            </label>
+
+
+                            <label class="service-option">
+
+                                <input
+                                    type="checkbox"
+                                    name="supports_delivery"
+                                    id="supports_delivery"
+                                >
+
+                                <span>
+                                    Home Delivery Supported
+                                </span>
+
+                            </label>
+
+                        </div>
+
+
+                        <!-- ============================= -->
+                        <!-- REGISTER -->
+                        <!-- ============================= -->
+
+                        <button
+                            type="submit"
+                            class="pharmacy-register-button"
+                        >
+
+                            <i class="fa-solid fa-store"></i>
+
+                            Register & Proceed to Verification
+
+                        </button>
+
+                    </form>
+
+                </div>
+
+
+                <!-- ============================= -->
+                <!-- FOOTER -->
+                <!-- ============================= -->
+
+                <div class="pharmacy-card-footer">
+
+                    Already registered?
+
+                    <a href="login.html">
+                        Sign In Here
+                    </a>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </main>
+
+    <script src="js/api.js"></script>
+    <script src="js/navbar.js"></script>
+    <script src="js/auth.js"></script>
+
+</body>
+
+</html>

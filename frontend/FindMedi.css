@@ -1,0 +1,492 @@
+/* ============================= */
+/* FIND MEDICINE PAGE */
+/* ============================= */
+
+.FindMedi {
+    width: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 50px 25px;
+}
+
+
+/* ============================= */
+/* PAGE HEADING */
+/* ============================= */
+
+.FindMedi h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 8px 0;
+}
+
+.page-heading p {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 1rem;
+    color: #64748b;
+    margin: 0 0 30px 0;
+    line-height: 1.6;
+}
+
+
+/* ============================= */
+/* MEDICINE SEARCH BAR */
+/* ============================= */
+
+.medicine-search {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    background: #ffffff;
+
+    padding: 8px;
+
+    border: 2px solid #e2e8f0;
+    border-radius: 16px;
+
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+
+    margin-bottom: 30px;
+
+    transition: all 0.2s ease;
+}
+
+.medicine-search:focus-within {
+    border-color: #0284c7;
+
+    box-shadow:
+        0 0 0 4px rgba(2, 132, 199, 0.10),
+        0 4px 12px rgba(15, 23, 42, 0.06);
+}
+
+
+/* ============================= */
+/* SEARCH INPUT */
+/* ============================= */
+
+.medicine-search input {
+    flex: 1;
+
+    width: 100%;
+
+    border: none;
+    outline: none;
+
+    background: transparent;
+
+    padding: 12px;
+
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 1rem;
+
+    color: #0f172a;
+}
+
+.medicine-search input::placeholder {
+    color: #94a3b8;
+}
+
+
+/* ============================= */
+/* SEARCH BUTTON */
+/* ============================= */
+
+.medicine-search button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 1px solid transparent;
+
+    background: #0284c7;
+    color: #ffffff;
+
+    padding: 0.65rem 1.25rem;
+
+    border-radius: 10px;
+
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition: all 0.2s ease;
+
+    white-space: nowrap;
+}
+
+.medicine-search button:hover {
+    background: #0369a1;
+
+    transform: translateY(-1px);
+
+    box-shadow:
+        0 4px 10px rgba(2, 132, 199, 0.20);
+}
+
+
+/* ============================= */
+/* MEDICINE RESULTS */
+/* ============================= */
+
+.medicine-results {
+    width: 100%;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 18px;
+}
+
+
+/* ============================= */
+/* MEDICINE CARD */
+/* ============================= */
+
+.medicine-card {
+    width: 100%;
+
+    display: grid;
+
+    grid-template-columns: 1fr auto;
+
+    gap: 30px;
+
+    background: #ffffff;
+
+    border: 1px solid #e2e8f0;
+
+    border-radius: 16px;
+
+    padding: 25px;
+
+    box-shadow:
+        0 4px 12px rgba(15, 23, 42, 0.05);
+
+    transition: all 0.2s ease;
+}
+
+.medicine-card:hover {
+    border-color: #cbd5e1;
+
+    box-shadow:
+        0 8px 20px rgba(15, 23, 42, 0.08);
+
+    transform: translateY(-2px);
+}
+
+
+/* ============================= */
+/* MEDICINE INFORMATION */
+/* ============================= */
+
+.medicine-details {
+    display: flex;
+    flex-direction: column;
+}
+
+
+/* ============================= */
+/* BADGES */
+/* ============================= */
+
+.medicine-badges {
+    display: flex;
+    align-items: center;
+
+    flex-wrap: wrap;
+
+    gap: 8px;
+
+    margin-bottom: 12px;
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+
+    padding: 5px 10px;
+
+    border-radius: 999px;
+
+    background: #e0f2fe;
+
+    color: #0369a1;
+
+    font-family: 'Plus Jakarta Sans', sans-serif;
+
+    font-size: 0.75rem;
+
+    font-weight: 600;
+}
+
+.badge-primary {
+    background: #e0f2fe;
+    color: #0369a1;
+}
+
+.badge-success {
+    background: #d1fae5;
+    color: #047857;
+}
+
+.badge.otc {
+    background: #d1fae5;
+    color: #047857;
+}
+
+
+/* ============================= */
+/* MEDICINE NAME */
+/* ============================= */
+
+.medicine-details h3 {
+    font-family: 'Space Grotesk', sans-serif;
+
+    font-size: 1.35rem;
+
+    font-weight: 700;
+
+    color: #0f172a;
+
+    margin: 0 0 8px 0;
+}
+
+
+/* ============================= */
+/* GENERIC NAME */
+/* ============================= */
+
+.medicine-generic {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+
+    font-size: 0.9rem;
+
+    color: #475569;
+
+    margin: 0 0 8px 0;
+
+    line-height: 1.5;
+}
+
+.medicine-generic strong {
+    color: #0f172a;
+
+    font-weight: 600;
+}
+
+
+/* ============================= */
+/* MEDICINE DESCRIPTION */
+/* ============================= */
+
+.medicine-description {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+
+    font-size: 0.9rem;
+
+    color: #64748b;
+
+    line-height: 1.6;
+
+    margin: 0 0 14px 0;
+}
+
+
+/* ============================= */
+/* VERIFIED PHARMACY */
+/* ============================= */
+
+.pharmacy-count {
+    display: flex;
+
+    align-items: center;
+
+    gap: 6px;
+
+    font-family: 'Plus Jakarta Sans', sans-serif;
+
+    font-size: 0.85rem;
+
+    font-weight: 600;
+
+    color: #047857;
+
+    margin-top: 4px;
+}
+
+.pharmacy-count::before {
+    content: "✓";
+
+    display: inline-flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    width: 20px;
+    height: 20px;
+
+    border-radius: 50%;
+
+    background: #d1fae5;
+
+    color: #047857;
+
+    font-size: 0.75rem;
+
+    font-weight: 700;
+}
+
+
+/* ============================= */
+/* OLD VERIFIED CLASS SUPPORT */
+/* ============================= */
+
+.verified {
+    display: flex;
+
+    align-items: center;
+
+    gap: 6px;
+
+    font-family: 'Plus Jakarta Sans', sans-serif;
+
+    font-size: 0.85rem;
+
+    font-weight: 600;
+
+    color: #047857;
+
+    margin-top: 4px;
+}
+
+
+/* ============================= */
+/* ACTION SECTION */
+/* ============================= */
+
+.medicine-action {
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+}
+
+
+/* ============================= */
+/* VIEW STORES BUTTON */
+/* ============================= */
+
+.medicine-action button {
+    display: inline-flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    border: 1px solid transparent;
+
+    background: #0284c7;
+
+    color: #ffffff;
+
+    padding: 0.65rem 1.25rem;
+
+    border-radius: 10px;
+
+    font-family: 'Plus Jakarta Sans', sans-serif;
+
+    font-size: 0.9rem;
+
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition: all 0.2s ease;
+
+    white-space: nowrap;
+}
+
+.medicine-action button:hover {
+    background: #0369a1;
+
+    transform: translateY(-1px);
+
+    box-shadow:
+        0 4px 10px rgba(2, 132, 199, 0.20);
+}
+
+
+/* ============================= */
+/* RESPONSIVE DESIGN */
+/* ============================= */
+
+@media (max-width: 768px) {
+
+    .FindMedi {
+        padding: 35px 18px;
+    }
+
+    .FindMedi h1 {
+        font-size: 1.7rem;
+    }
+
+    .medicine-card {
+        grid-template-columns: 1fr;
+
+        gap: 20px;
+    }
+
+    .medicine-action {
+        justify-content: flex-start;
+    }
+
+}
+
+
+@media (max-width: 500px) {
+
+    .FindMedi {
+        padding: 30px 15px;
+    }
+
+    .FindMedi h1 {
+        font-size: 1.5rem;
+    }
+
+    .page-heading p {
+        font-size: 0.9rem;
+    }
+
+    .medicine-search {
+        padding: 6px;
+    }
+
+    .medicine-search input {
+        padding: 10px 8px;
+
+        font-size: 0.8rem;
+    }
+
+    .medicine-search button {
+        padding: 0.6rem 0.9rem;
+
+        font-size: 0.8rem;
+    }
+
+    .medicine-card {
+        padding: 18px;
+    }
+
+    .medicine-details h3 {
+        font-size: 1.15rem;
+    }
+
+}

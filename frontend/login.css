@@ -1,0 +1,331 @@
+/* ============================= */
+/* LOGIN PAGE */
+/* ============================= */
+
+body {
+    margin: 0;
+    background: #f8fafc;
+}
+
+
+/* ============================= */
+/* LOGIN CONTAINER */
+/* ============================= */
+
+.Login {
+    min-height: calc(100vh - 72px);
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    padding: 40px 20px;
+
+    box-sizing: border-box;
+}
+
+
+/* ============================= */
+/* LOGIN CARD */
+/* ============================= */
+
+.login-card {
+    width: 100%;
+    max-width: 460px;
+
+    background: #ffffff;
+
+    border: 1px solid #e2e8f0;
+
+    border-radius: 16px;
+
+    box-shadow:
+        0 20px 25px -5px rgb(0 0 0 / 0.10),
+        0 8px 10px -6px rgb(0 0 0 / 0.10);
+
+    overflow: hidden;
+}
+
+
+/* ============================= */
+/* LOGIN FORM CONTAINER */
+/* ============================= */
+
+.login-form-container {
+    padding: 30px 28px;
+}
+
+
+/* ============================= */
+/* DIVIDER */
+/* ============================= */
+
+.login-divider {
+    display: flex;
+
+    align-items: center;
+
+    gap: 12px;
+
+    margin: 0 0 22px;
+}
+
+.login-divider::before,
+.login-divider::after {
+    content: "";
+
+    flex: 1;
+
+    height: 1px;
+
+    background: #e2e8f0;
+}
+
+.login-divider span {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+
+    font-size: 0.72rem;
+
+    font-weight: 600;
+
+    color: #94a3b8;
+
+    white-space: nowrap;
+}
+
+
+/* ============================= */
+/* FORM GROUP */
+/* ============================= */
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+
+    font-family: 'Plus Jakarta Sans', sans-serif;
+
+    font-size: 0.85rem;
+
+    font-weight: 600;
+
+    color: #0f172a;
+
+    margin-bottom: 6px;
+}
+
+
+/* ============================= */
+/* PASSWORD LABEL */
+/* ============================= */
+
+.password-group {
+    margin-bottom: 20px;
+}
+
+.password-label {
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    margin-bottom: 6px;
+}
+
+.password-label label {
+    margin-bottom: 0;
+}
+
+.password-label a {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+
+    font-size: 0.8rem;
+
+    font-weight: 600;
+
+    color: #0284c7;
+
+    text-decoration: none;
+}
+
+.password-label a:hover {
+    color: #0369a1;
+}
+
+
+/* ============================= */
+/* INPUTS */
+/* ============================= */
+
+.form-group input[type="email"],
+.form-group input[type="password"] {
+    width: 100%;
+
+    box-sizing: border-box;
+
+    padding: 12px 14px;
+
+    border: 1px solid #e2e8f0;
+
+    border-radius: 10px;
+
+    background: #ffffff;
+
+    font-family: 'Plus Jakarta Sans', sans-serif;
+
+    font-size: 0.9rem;
+
+    color: #0f172a;
+
+    outline: none;
+
+    transition: all 0.2s ease;
+}
+
+.form-group input[type="email"]::placeholder,
+.form-group input[type="password"]::placeholder {
+    color: #94a3b8;
+}
+
+.form-group input[type="email"]:focus,
+.form-group input[type="password"]:focus {
+    border-color: #0284c7;
+
+    box-shadow:
+        0 0 0 3px rgba(2, 132, 199, 0.10);
+}
+
+
+/* ============================= */
+/* REMEMBER ME */
+/* ============================= */
+
+.remember-me {
+    display: flex;
+
+    align-items: center;
+
+    gap: 8px;
+
+    margin-bottom: 22px;
+}
+
+.remember-me input {
+    width: 15px;
+    height: 15px;
+
+    cursor: pointer;
+
+    accent-color: #0284c7;
+}
+
+.remember-me label {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+
+    font-size: 0.85rem;
+
+    color: #64748b;
+
+    cursor: pointer;
+}
+
+
+/* ============================= */
+/* SIGN IN BUTTON */
+/* ============================= */
+
+.sign-in-button {
+    width: 100%;
+
+    display: inline-flex;
+
+    align-items: center;
+    justify-content: center;
+
+    padding: 11px 20px;
+
+    border: 1px solid transparent;
+
+    border-radius: 10px;
+
+    background: #0284c7;
+
+    color: #ffffff;
+
+    font-family: 'Plus Jakarta Sans', sans-serif;
+
+    font-size: 0.9rem;
+
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition: all 0.2s ease;
+}
+
+.sign-in-button:hover {
+    background: #0369a1;
+
+    transform: translateY(-1px);
+
+    box-shadow:
+        0 6px 16px rgba(2, 132, 199, 0.35);
+}
+
+
+/* ============================= */
+/* LOGIN FOOTER */
+/* ============================= */
+
+.login-footer {
+    text-align: center;
+
+    padding: 20px;
+
+    background: #f1f5f9;
+
+    border-top: 1px solid #e2e8f0;
+
+    font-family: 'Plus Jakarta Sans', sans-serif;
+
+    font-size: 0.88rem;
+
+    color: #64748b;
+}
+
+.login-footer a {
+    font-weight: 700;
+
+    color: #0284c7;
+
+    text-decoration: none;
+}
+
+.login-footer a:hover {
+    color: #0369a1;
+}
+
+
+/* ============================= */
+/* RESPONSIVE DESIGN */
+/* ============================= */
+
+@media (max-width: 500px) {
+
+    .Login {
+        padding: 30px 15px;
+    }
+
+    .login-form-container {
+        padding: 25px 20px;
+    }
+
+    .login-divider span {
+        font-size: 0.65rem;
+    }
+
+}

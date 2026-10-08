@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="HomePage.css">
+    <title>Pharmacy Dashboard - MediFind</title>
+</head>
+<body>
+
+    <!-- NAVBAR -->
+    <div class="container">
+        <div class="section1">
+            <div class="logo">
+                <div class="logo-icon">+</div>
+                <span>MediFind</span>
+            </div>
+        </div>
+
+        <div class="section2">
+            <button class="home" onclick="window.location.href='HomePage.html'">Home</button>
+            <button class="pharmacies" onclick="window.location.href='Pharmacies.html'">Pharmacies</button>
+        </div>
+
+        <div class="section3">
+            <button class="login" onclick="window.location.href='login.html'">Login</button>
+            <button class="register" onclick="window.location.href='register.html'">Register</button>
+        </div>
+    </div>
+
+    <!-- MAIN PORTAL -->
+    <main style="max-width:1100px; margin:30px auto 60px; padding:0 20px; font-family:'Plus Jakarta Sans',sans-serif;">
+
+        <!-- STORE HEADER CARD -->
+        <div id="pharmacy-header-card" style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:25px; margin-bottom:25px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px; box-shadow:0 4px 12px rgba(15,23,42,0.04);">
+            <div>
+                <span id="pharmacy-status-badge" style="display:inline-block; font-size:0.75rem; font-weight:700; padding:4px 10px; border-radius:999px; background:#fef3c7; color:#b45309; margin-bottom:6px;">
+                    Verification Pending
+                </span>
+                <h1 id="pharmacy-name-title" style="font-family:'Space Grotesk',sans-serif; font-size:1.8rem; color:#0f172a; margin:0 0 4px;">
+                    Loading Pharmacy Portal...
+                </h1>
+                <p id="pharmacy-license-sub" style="color:#64748b; font-size:0.88rem; margin:0;">
+                    Drug License: Loading...
+                </p>
+            </div>
+
+            <div style="display:flex; gap:10px;">
+                <button class="search-button" style="padding:0.5rem 1rem;" onclick="showTab('orders')">
+                    📦 Orders
+                </button>
+                <button class="login" style="padding:0.5rem 1rem;" onclick="showTab('inventory')">
+                    💊 Inventory
+                </button>
+            </div>
+        </div>
+
+        <!-- TAB 1: INCOMING ORDERS -->
+        <section id="tab-orders">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h2 style="font-family:'Space Grotesk',sans-serif; font-size:1.4rem; color:#0f172a; margin:0;">
+                    Customer Orders
+                </h2>
+                <button class="login" onclick="loadPharmacyOrders()" style="font-size:0.8rem; padding:6px 12px;">
+                    🔄 Refresh Orders
+                </button>
+            </div>
+
+            <div id="orders-list-container" style="display:flex; flex-direction:column; gap:16px;">
+                <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:30px; text-align:center; color:#64748b;">
+                    Loading orders...
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: INVENTORY MANAGEMENT -->
+        <section id="tab-inventory" style="display:none;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h2 style="font-family:'Space Grotesk',sans-serif; font-size:1.4rem; color:#0f172a; margin:0;">
+                    Manage Inventory Stock & Prices
+                </h2>
+                <button class="login" onclick="loadPharmacyInventory()" style="font-size:0.8rem; padding:6px 12px;">
+                    🔄 Refresh Stock
+                </button>
+            </div>
+
+            <div id="inventory-list-container" style="display:flex; flex-direction:column; gap:16px;">
+                <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:30px; text-align:center; color:#64748b;">
+                    Loading inventory...
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="js/api.js"></script>
+    <script src="js/navbar.js"></script>
+    <script src="js/pharmacy-portal.js"></script>
+</body>
+</html>

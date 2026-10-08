@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+*.pyd.disabled
+venv/
+venv*/
+env/
+.env
+
+# Database & Runtime Data
+medifind.db
+uploads/prescriptions/*
+!uploads/prescriptions/.gitkeep
+
+# IDE & Testing
+.vscode/
+.idea/
+.pytest_cache/
+*.log

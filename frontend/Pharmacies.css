@@ -1,0 +1,331 @@
+
+/* ============================= */
+/* PHARMACIES PAGE */
+/* ============================= */
+
+body {
+    margin: 0;
+    background: #f8fafc;
+}
+
+
+/* ============================= */
+/* PHARMACIES CONTAINER */
+/* ============================= */
+
+.Pharmacies {
+    width: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 50px 25px;
+    box-sizing: border-box;
+}
+
+
+/* ============================= */
+/* PAGE HEADING */
+/* ============================= */
+
+.pharmacy-heading {
+    width: 100%;
+    text-align: center;
+    margin-bottom: 35px;
+}
+
+.pharmacy-heading h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 10px 0;
+}
+
+.pharmacy-heading p {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 1rem;
+    font-weight: 400;
+    color: #64748b;
+    margin: 0;
+    line-height: 1.6;
+}
+
+
+/* ============================= */
+/* PHARMACY LIST */
+/* ============================= */
+
+.pharmacy-list {
+    width: 100%;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 18px;
+}
+
+
+/* ============================= */
+/* PHARMACY CARD */
+/* ============================= */
+
+.pharmacy-card {
+    width: 100%;
+    box-sizing: border-box;
+
+    display: grid;
+    grid-template-columns: 1fr auto;
+
+    gap: 30px;
+
+    background: #ffffff;
+
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+
+    padding: 25px;
+
+    box-shadow:
+        0 4px 12px rgba(15, 23, 42, 0.05);
+
+    transition: all 0.2s ease;
+}
+
+.pharmacy-card:hover {
+    border-color: #cbd5e1;
+
+    box-shadow:
+        0 8px 20px rgba(15, 23, 42, 0.08);
+
+    transform: translateY(-2px);
+}
+
+
+/* ============================= */
+/* PHARMACY DETAILS */
+/* ============================= */
+
+.pharmacy-details {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+
+/* ============================= */
+/* PHARMACY TOP */
+/* ============================= */
+
+.pharmacy-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+
+    margin-bottom: 12px;
+}
+
+.pharmacy-top h3 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.35rem;
+    font-weight: 700;
+
+    color: #0f172a;
+
+    margin: 0 0 8px 0;
+}
+
+
+/* ============================= */
+/* VERIFIED STATUS */
+/* ============================= */
+
+.pharmacy-status {
+    display: inline-flex;
+    align-items: center;
+
+    padding: 5px 10px;
+
+    background: #d1fae5;
+    color: #047857;
+
+    border-radius: 999px;
+
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+
+    white-space: nowrap;
+}
+
+
+/* ============================= */
+/* PHARMACY DESCRIPTION */
+/* ============================= */
+
+.pharmacy-address {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 400;
+
+    color: #64748b;
+
+    line-height: 1.6;
+
+    margin: 0 0 15px 0;
+}
+
+
+/* ============================= */
+/* PHARMACY INFORMATION */
+/* ============================= */
+
+.pharmacy-info {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+
+    gap: 10px 18px;
+
+    margin-bottom: 12px;
+}
+
+.pharmacy-info span {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+
+    color: #475569;
+}
+
+
+/* ============================= */
+/* PHARMACY HOURS */
+/* ============================= */
+
+.pharmacy-hours {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+
+    font-size: 0.85rem;
+    font-weight: 600;
+
+    color: #047857;
+
+    line-height: 1.5;
+}
+
+
+/* ============================= */
+/* ACTION SECTION */
+/* ============================= */
+
+.pharmacy-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+
+/* ============================= */
+/* VIEW PHARMACY BUTTON */
+/* ============================= */
+
+.view-pharmacy-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 0.65rem 1.25rem;
+
+    border: 1px solid transparent;
+    border-radius: 10px;
+
+    background: #0284c7;
+    color: #ffffff;
+
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition: all 0.2s ease;
+
+    white-space: nowrap;
+}
+
+.view-pharmacy-button:hover {
+    background: #0369a1;
+
+    transform: translateY(-1px);
+
+    box-shadow:
+        0 4px 10px rgba(2, 132, 199, 0.20);
+}
+
+
+/* ============================= */
+/* RESPONSIVE DESIGN */
+/* ============================= */
+
+@media (max-width: 768px) {
+
+    .Pharmacies {
+        padding: 35px 18px;
+    }
+
+    .pharmacy-heading h1 {
+        font-size: 1.7rem;
+    }
+
+    .pharmacy-card {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .pharmacy-action {
+        justify-content: flex-start;
+    }
+
+}
+
+
+/* ============================= */
+/* SMALL MOBILE */
+/* ============================= */
+
+@media (max-width: 500px) {
+
+    .Pharmacies {
+        padding: 30px 15px;
+    }
+
+    .pharmacy-heading {
+        margin-bottom: 25px;
+    }
+
+    .pharmacy-heading h1 {
+        font-size: 1.5rem;
+    }
+
+    .pharmacy-heading p {
+        font-size: 0.9rem;
+    }
+
+    .pharmacy-card {
+        padding: 18px;
+    }
+
+    .pharmacy-top h3 {
+        font-size: 1.15rem;
+    }
+
+    .pharmacy-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 7px;
+    }
+
+    .view-pharmacy-button {
+        width: 100%;
+    }
+
+}

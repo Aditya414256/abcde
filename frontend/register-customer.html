@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap"
+        rel="stylesheet"
+    >
+
+    <!-- Font Awesome -->
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    >
+
+    <!-- Navbar -->
+    <link rel="stylesheet" href="HomePage.css">
+
+    <!-- Customer Registration -->
+    <link rel="stylesheet" href="register-customer.css">
+
+    <title>Customer Sign Up - MediFind</title>
+
+</head>
+
+<body>
+
+    <!-- ============================= -->
+    <!-- NAVBAR -->
+    <!-- ============================= -->
+
+    <div class="container">
+
+        <div class="section1">
+
+            <div class="logo">
+
+                <div class="logo-icon">
+                    +
+                </div>
+
+                <span>
+                    MediFind
+                </span>
+
+            </div>
+
+        </div>
+
+
+        <div class="section2">
+
+            <button
+                class="home"
+                onclick="window.location.href='HomePage.html'"
+            >
+                Home
+            </button>
+
+            <button
+                class="find-medicine"
+                onclick="window.location.href='FindMedi.html'"
+            >
+                Find Medicine
+            </button>
+
+            <button
+                class="pharmacies"
+                onclick="window.location.href='Pharmacies.html'"
+            >
+                Pharmacies
+            </button>
+
+        </div>
+
+
+        <div class="section3">
+
+            <button
+                class="login"
+                onclick="window.location.href='login.html'"
+            >
+                Login
+            </button>
+
+            <button
+                class="register"
+                onclick="window.location.href='register.html'"
+            >
+                Register
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- ============================= -->
+    <!-- CUSTOMER REGISTRATION -->
+    <!-- ============================= -->
+
+    <main class="customer-register-page">
+
+        <div class="customer-register-container">
+
+            <div class="customer-card">
+
+                <!-- HEADER -->
+
+                <div class="customer-card-header">
+
+                    <div class="customer-brand-icon">
+
+                        <i class="fa-solid fa-user-plus"></i>
+
+                    </div>
+
+
+                    <h2>
+                        Create Customer Account
+                    </h2>
+
+
+                    <p>
+                        Find nearby medicines, upload prescriptions, and place orders.
+                    </p>
+
+                </div>
+
+
+                <!-- FORM -->
+
+                <div class="customer-card-body">
+
+                    <form>
+
+                        <!-- FULL NAME -->
+
+                        <div class="form-group">
+
+                            <label
+                                class="form-label"
+                                for="full_name"
+                            >
+                                Full Name *
+                            </label>
+
+                            <input
+                                type="text"
+                                name="full_name"
+                                id="full_name"
+                                class="form-control"
+                                placeholder=""
+                                required
+                                autofocus
+                            >
+
+                        </div>
+
+
+                        <!-- EMAIL -->
+
+                        <div class="form-group">
+
+                            <label
+                                class="form-label"
+                                for="email"
+                            >
+                                Email Address *
+                            </label>
+
+                            <input
+                                type="email"
+                                name="email"
+                                id="email"
+                                class="form-control"
+                                placeholder=""
+                                required
+                            >
+
+                        </div>
+
+
+                        <!-- PHONE -->
+
+                        <div class="form-group">
+
+                            <label
+                                class="form-label"
+                                for="phone"
+                            >
+                                Phone Number
+                            </label>
+
+                            <input
+                                type="tel"
+                                name="phone"
+                                id="phone"
+                                class="form-control"
+                                placeholder=""
+                            >
+
+                        </div>
+
+
+                        <!-- PASSWORD -->
+
+                        <div class="form-group">
+
+                            <label
+                                class="form-label"
+                                for="password"
+                            >
+                                Password *
+                            </label>
+
+                            <input
+                                type="password"
+                                name="password"
+                                id="password"
+                                class="form-control"
+                                placeholder=""
+                                required
+                                minlength="6"
+                            >
+
+                        </div>
+
+
+                        <!-- CONFIRM PASSWORD -->
+
+                        <div class="form-group">
+
+                            <label
+                                class="form-label"
+                                for="confirm_password"
+                            >
+                                Confirm Password *
+                            </label>
+
+                            <input
+                                type="password"
+                                name="confirm_password"
+                                id="confirm_password"
+                                class="form-control"
+                                placeholder=""
+                                required
+                                minlength="6"
+                            >
+
+                        </div>
+
+
+                        <!-- REGISTER -->
+
+                        <button
+                            type="submit"
+                            class="customer-register-button"
+                        >
+
+                            <i class="fa-solid fa-check"></i>
+
+                            Register Account
+
+                        </button>
+
+                    </form>
+
+                </div>
+
+
+                <!-- FOOTER -->
+
+                <div class="customer-card-footer">
+
+                    Already have an account?
+
+                    <a href="login.html">
+                        Sign In
+                    </a>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </main>
+
+    <script src="js/api.js"></script>
+    <script src="js/navbar.js"></script>
+    <script src="js/auth.js"></script>
+
+</body>
+
+</html>

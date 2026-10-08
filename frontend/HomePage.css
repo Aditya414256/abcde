@@ -1,0 +1,529 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: #f8fafc;
+    color: #0f172a;
+}
+
+
+/* =========================
+   NAVIGATION
+========================= */
+
+.container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    height: 72px;
+    background: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.section1 {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding-left: 20px;
+}
+
+.section2 {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 25px;
+}
+
+.section3 {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    padding-right: 15px;
+}
+
+
+/* =========================
+   LOGO
+========================= */
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 1.4rem;
+
+    color: #0f172a;
+}
+
+.logo-icon {
+    width: 38px;
+    height: 38px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: linear-gradient(
+        135deg,
+        #0284c7 0%,
+        #0369a1 100%
+    );
+
+    color: white;
+    border-radius: 10px;
+
+    font-size: 1.4rem;
+    font-weight: 700;
+
+    box-shadow: 0 4px 10px rgba(2, 132, 199, 0.3);
+}
+
+
+/* =========================
+   NAV BUTTONS
+========================= */
+
+.home,
+.find-medicine,
+.pharmacies {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 600;
+    font-size: 0.9rem;
+
+    background: transparent;
+    border: none;
+
+    color: #64748b;
+
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.home:hover,
+.find-medicine:hover,
+.pharmacies:hover {
+    color: #0284c7;
+}
+
+
+/* =========================
+   LOGIN
+========================= */
+
+.login {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 600;
+    font-size: 0.9rem;
+
+    padding: 0.55rem 1.25rem;
+
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+
+    background: #ffffff;
+    color: #0f172a;
+
+    cursor: pointer;
+
+    transition: all 0.2s ease;
+}
+
+.login:hover {
+    background-color: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #0284c7;
+
+    transform: translateY(-1px);
+}
+
+
+/* =========================
+   REGISTER
+========================= */
+
+.register {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 600;
+    font-size: 0.9rem;
+
+    padding: 0.55rem 1.25rem;
+
+    border-radius: 10px;
+    border: 1px solid transparent;
+
+    background: #0284c7;
+    color: #ffffff;
+
+    cursor: pointer;
+
+    transition: all 0.2s ease;
+}
+
+.register:hover {
+    background-color: #0369a1;
+
+    transform: translateY(-1px);
+
+    box-shadow:
+        0 6px 16px rgba(2, 132, 199, 0.35);
+}
+
+
+/* =========================
+   HERO
+========================= */
+
+.web-intro {
+    width: 100%;
+    text-align: center;
+
+    padding: 100px 20px 35px;
+}
+
+.web-intro h1 {
+    font-family: 'Space Grotesk', sans-serif;
+
+    color: #0f172a;
+
+    font-size: clamp(
+        2.4rem,
+        5.5vw,
+        3.8rem
+    );
+
+    font-weight: 700;
+
+    line-height: 1.15;
+
+    margin: 0 0 20px;
+}
+
+.web-intro h1 span {
+    background:
+        linear-gradient(
+            135deg,
+            #0284c7 0%,
+            #059669 100%
+        );
+
+    background-clip: text;
+    -webkit-background-clip: text;
+
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+}
+
+.web-intro p {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+
+    font-size: 1.12rem;
+
+    color: #64748b;
+
+    max-width: 650px;
+
+    margin: 0 auto;
+
+    line-height: 1.6;
+}
+
+
+/* =========================
+   SEARCH
+========================= */
+
+.search-section {
+    width: 100%;
+
+    text-align: center;
+
+    padding: 20px 20px 80px;
+}
+
+.search-wrapper {
+    max-width: 720px;
+    margin: 0 auto;
+    position: relative;
+}
+
+.search-suggestions {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.10);
+    overflow: hidden;
+    z-index: 100;
+    text-align: left;
+    display: none;
+}
+
+.suggestion-item {
+    padding: 12px 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #f1f5f9;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    transition: background-color 0.15s ease;
+}
+
+.suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.suggestion-item:hover,
+.suggestion-item.active {
+    background-color: #f8fafc;
+}
+
+.suggestion-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #0f172a;
+}
+
+.suggestion-generic {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-left: 8px;
+}
+
+.suggestion-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: #e0f2fe;
+    color: #0369a1;
+}
+
+.suggestion-badge.rx {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.search-bar {
+    background: #ffffff;
+
+    padding: 8px;
+
+    border-radius: 16px;
+
+    border: 2px solid #e2e8f0;
+
+    box-shadow:
+        0 20px 25px -5px rgb(0 0 0 / 0.10),
+        0 8px 10px -6px rgb(0 0 0 / 0.10);
+
+    display: flex;
+    align-items: center;
+
+    gap: 8px;
+
+    transition: all 0.2s ease;
+}
+
+.search-bar:focus-within {
+    border-color: #0284c7;
+
+    box-shadow:
+        0 12px 30px rgba(2, 132, 199, 0.18);
+}
+
+.search-input-group {
+    flex: 1;
+
+    display: flex;
+    align-items: center;
+
+    gap: 14px;
+
+    padding: 0 16px;
+}
+
+.search-icon {
+    color: #0284c7;
+
+    font-size: 1.2rem;
+}
+
+.search-input {
+    width: 100%;
+
+    border: none;
+    outline: none;
+
+    font-size: 1.05rem;
+
+    font-family:
+        'Plus Jakarta Sans',
+        sans-serif;
+
+    color: #0f172a;
+
+    background: transparent;
+}
+
+.search-input::placeholder {
+    color: #94a3b8;
+}
+
+.search-button {
+    display: inline-flex;
+
+    align-items: center;
+    justify-content: center;
+
+    padding: 0.55rem 1.25rem;
+
+    font-family:
+        'Plus Jakarta Sans',
+        sans-serif;
+
+    font-weight: 600;
+
+    font-size: 0.9rem;
+
+    border-radius: 10px;
+
+    border: 1px solid transparent;
+
+    background: #0284c7;
+
+    color: #ffffff;
+
+    cursor: pointer;
+
+    transition: all 0.2s ease;
+}
+
+.search-button:hover {
+    background: #0369a1;
+
+    transform: translateY(-1px);
+
+    box-shadow:
+        0 6px 16px rgba(2, 132, 199, 0.35);
+}
+
+
+/* =========================
+   HOME INFORMATION
+========================= */
+
+.home-info {
+    width: 100%;
+
+    max-width: 1050px;
+
+    margin: 0 auto;
+
+    padding: 20px 20px 80px;
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, 1fr);
+
+    gap: 20px;
+}
+
+.info-item {
+    background: #ffffff;
+
+    border: 1px solid #e2e8f0;
+
+    border-radius: 14px;
+
+    padding: 25px;
+
+    text-align: center;
+}
+
+.info-item h3 {
+    margin: 0 0 10px;
+
+    font-family:
+        'Space Grotesk',
+        sans-serif;
+
+    font-size: 1.1rem;
+}
+
+.info-item p {
+    margin: 0;
+
+    font-family:
+        'Plus Jakarta Sans',
+        sans-serif;
+
+    font-size: 0.9rem;
+
+    color: #64748b;
+
+    line-height: 1.6;
+}
+
+
+/* =========================
+   RESPONSIVE
+========================= */
+
+@media (max-width: 800px) {
+
+    .container {
+        grid-template-columns: 1fr;
+        height: auto;
+
+        padding: 15px;
+    }
+
+    .section1,
+    .section2,
+    .section3 {
+        justify-content: center;
+
+        padding: 8px;
+    }
+
+    .web-intro {
+        padding-top: 60px;
+    }
+
+    .home-info {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 600px) {
+
+    .search-bar {
+        flex-direction: column;
+    }
+
+    .search-input-group {
+        width: 100%;
+    }
+
+    .search-button {
+        width: 100%;
+    }
+}
