@@ -89,11 +89,14 @@ All 8 test suites validate:
 
 ## 👥 Demo Accounts for Testing
 
-| Role | Email | Password |
-| :--- | :--- | :--- |
-| **Customer** | `customer@example.com` | `customer123` |
-| **Pharmacy Owner** | `apollo@pharmacy.com` | `pharmacy123` |
-| **Admin** | `admin@medifind.com` | `admin123` |
+| Role | Email | Password | Details |
+| :--- | :--- | :--- | :--- |
+| **Customer** | `customer@example.com` | `customer123` | Aditya Sharma / Pratik Kasar |
+| **Ram Medical** | `ram@pharmacy.com` | `pharmacy123` | Pitreshwer Colony, Shirpur (098238 63004) |
+| **Shree Ji Medical** | `shreeji@pharmacy.com` | `pharmacy123` | Hira Nagar, Shirpur (098238 63004) |
+| **Tasir Medical** | `tasir@pharmacy.com` | `pharmacy123` | Ganesh Colony, Shirpur (075587 31868) |
+| **Shree Gangai Medical** | `gangai@pharmacy.com` | `pharmacy123` | Swami Vivekanand Nagar, Shirpur (077981 04626) |
+| **Admin** | `admin@medifind.com` | `admin123` | Platform Administrator |
 
 ---
 

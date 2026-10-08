@@ -11,89 +11,131 @@ def seed_database(app=None):
         # Create all database tables
         db.create_all()
 
-        # Check if already seeded
-        if User.query.filter_by(email='admin@medifind.com').first():
-            print("Database already contains seed data.")
+        # Check if already seeded with new data
+        if Pharmacy.query.filter_by(name='Ram Medical').first():
+            print("Database already contains Ram Medical and Shirpur pharmacies.")
             return
 
-        print("Seeding database with realistic data...")
+        print("Seeding database with Shirpur-Warwade pharmacies and catalogue...")
 
         # 1. Admin User
-        admin = User(
-            email='admin@medifind.com',
-            full_name='System Administrator',
-            phone='9876543210',
-            role='admin'
-        )
-        admin.set_password('admin123')
-        db.session.add(admin)
+        admin = User.query.filter_by(email='admin@medifind.com').first()
+        if not admin:
+            admin = User(
+                email='admin@medifind.com',
+                full_name='System Administrator',
+                phone='9876543210',
+                role='admin'
+            )
+            admin.set_password('admin123')
+            db.session.add(admin)
 
         # 2. Customer User
-        customer = User(
-            email='customer@example.com',
-            full_name='Aditya Sharma',
-            phone='9876543211',
-            role='customer'
-        )
-        customer.set_password('customer123')
-        db.session.add(customer)
+        customer = User.query.filter_by(email='customer@example.com').first()
+        if not customer:
+            customer = User(
+                email='customer@example.com',
+                full_name='Pratik Kasar',
+                phone='9823863004',
+                role='customer'
+            )
+            customer.set_password('customer123')
+            db.session.add(customer)
 
-        # 3. Pharmacy Owners & Verified Pharmacies
-        # Pharmacy 1: Apollo HealthCare & Pharmacy
-        owner_apollo = User(
-            email='apollo@pharmacy.com',
-            full_name='Dr. Rajesh Kumar',
-            phone='9876543220',
-            role='pharmacy'
-        )
-        owner_apollo.set_password('pharmacy123')
-        db.session.add(owner_apollo)
-        db.session.flush()
+        # 3. Pharmacy Owners & Real Shirpur-Warwade Pharmacies
+        # Pharmacy 1: Ram Medical
+        owner_ram = User.query.filter_by(email='ram@pharmacy.com').first()
+        if not owner_ram:
+            owner_ram = User(
+                email='ram@pharmacy.com',
+                full_name='Ram Medical Store Manager',
+                phone='098238 63004',
+                role='pharmacy'
+            )
+            owner_ram.set_password('pharmacy123')
+            db.session.add(owner_ram)
+            db.session.flush()
 
-        apollo = Pharmacy(
-            owner_id=owner_apollo.id,
-            name='Apollo HealthCare & Pharmacy',
-            license_number='DL-KA-2024-00142',
-            phone='080-25589000',
-            email='contact@apollopharmacy.com',
-            address='12 MG Road, Near Metro Station',
-            city='Bangalore',
-            state='Karnataka',
-            pincode='560001',
-            latitude=12.9716,
-            longitude=77.5946,
+        ram_medical = Pharmacy(
+            owner_id=owner_ram.id,
+            name='Ram Medical',
+            license_number='DL-MH-2024-425401',
+            phone='098238 63004',
+            email='ram@pharmacy.com',
+            address='Pitreshwer Colony, Swami Vivekanand Nagar',
+            city='Shirpur-Warwade',
+            state='Maharashtra',
+            pincode='425405',
+            latitude=21.3565,
+            longitude=74.8810,
             supports_pickup=True,
             supports_delivery=True,
-            delivery_fee=35.0,
+            delivery_fee=25.0,
             is_verified=True,
             verification_status='APPROVED',
             is_active=True
         )
-        db.session.add(apollo)
+        db.session.add(ram_medical)
 
-        # Pharmacy 2: MedPlus Express Pharmacy
-        owner_medplus = User(
-            email='medplus@pharmacy.com',
-            full_name='Suresh Patel',
-            phone='9876543221',
-            role='pharmacy'
+        # Pharmacy 2: Shree Ji Medical
+        owner_shreeji = User.query.filter_by(email='shreeji@pharmacy.com').first()
+        if not owner_shreeji:
+            owner_shreeji = User(
+                email='shreeji@pharmacy.com',
+                full_name='Shree Ji Medical Store Manager',
+                phone='098238 63004',
+                role='pharmacy'
+            )
+            owner_shreeji.set_password('pharmacy123')
+            db.session.add(owner_shreeji)
+            db.session.flush()
+
+        shreeji_medical = Pharmacy(
+            owner_id=owner_shreeji.id,
+            name='Shree Ji Medical',
+            license_number='DL-MH-2024-425402',
+            phone='098238 63004',
+            email='shreeji@pharmacy.com',
+            address='Shree Ji Medical, Hira Nagar, Swami Vivekanand Nagar',
+            city='Shirpur-Warwade',
+            state='Maharashtra',
+            pincode='425405',
+            latitude=21.3572,
+            longitude=74.8825,
+            supports_pickup=True,
+            supports_delivery=True,
+            delivery_fee=20.0,
+            is_verified=True,
+            verification_status='APPROVED',
+            is_active=True
         )
-        owner_medplus.set_password('pharmacy123')
-        db.session.add(owner_medplus)
-        db.session.flush()
+        db.session.add(shreeji_medical)
 
-        medplus = Pharmacy(
-            owner_id=owner_medplus.id,
-            name='MedPlus Express Pharmacy',
-            license_number='DL-KA-2024-00891',
-            phone='080-25591234',
-            email='support@medplusindia.com',
-            address='45 Indiranagar 100ft Road',
-            city='Bangalore',
-            state='Karnataka',
-            pincode='560038',
-            latitude=12.9784,
-            longitude=77.6408,
+        # Pharmacy 3: Tasir Medical
+        owner_tasir = User.query.filter_by(email='tasir@pharmacy.com').first()
+        if not owner_tasir:
+            owner_tasir = User(
+                email='tasir@pharmacy.com',
+                full_name='Tasir Medical Store Manager',
+                phone='075587 31868',
+                role='pharmacy'
+            )
+            owner_tasir.set_password('pharmacy123')
+            db.session.add(owner_tasir)
+            db.session.flush()
+
+        tasir_medical = Pharmacy(
+            owner_id=owner_tasir.id,
+            name='Tasir Medical',
+            license_number='DL-MH-2024-425403',
+            phone='075587 31868',
+            email='tasir@pharmacy.com',
+            address='17, behind RC Patel Urdu school, Ganesh Colony, Saraswti Colony',
+            city='Shirpur-Warwade',
+            state='Maharashtra',
+            pincode='425405',
+            latitude=21.3540,
+            longitude=74.8790,
             supports_pickup=True,
             supports_delivery=True,
             delivery_fee=30.0,
@@ -101,71 +143,41 @@ def seed_database(app=None):
             verification_status='APPROVED',
             is_active=True
         )
-        db.session.add(medplus)
+        db.session.add(tasir_medical)
 
-        # Pharmacy 3: Guardian Care Pharmacy
-        owner_guardian = User(
-            email='guardian@pharmacy.com',
-            full_name='Priya Nair',
-            phone='9876543222',
-            role='pharmacy'
-        )
-        owner_guardian.set_password('pharmacy123')
-        db.session.add(owner_guardian)
-        db.session.flush()
+        # Pharmacy 4: Shree Gangai Medical
+        owner_gangai = User.query.filter_by(email='gangai@pharmacy.com').first()
+        if not owner_gangai:
+            owner_gangai = User(
+                email='gangai@pharmacy.com',
+                full_name='Shree Gangai Medical Store Manager',
+                phone='077981 04626',
+                role='pharmacy'
+            )
+            owner_gangai.set_password('pharmacy123')
+            db.session.add(owner_gangai)
+            db.session.flush()
 
-        guardian = Pharmacy(
-            owner_id=owner_guardian.id,
-            name='Guardian Care Pharmacy',
-            license_number='DL-KA-2024-00563',
-            phone='080-26673456',
-            email='info@guardiancare.in',
-            address='88 Koramangala 4th Block',
-            city='Bangalore',
-            state='Karnataka',
-            pincode='560034',
-            latitude=12.9345,
-            longitude=77.6265,
+        shree_gangai = Pharmacy(
+            owner_id=owner_gangai.id,
+            name='Shree Gangai Medical',
+            license_number='DL-MH-2024-425404',
+            phone='077981 04626',
+            email='gangai@pharmacy.com',
+            address='Shree Gangai Medical, Shirpur, Swami Vivekanand Nagar',
+            city='Shirpur-Warwade',
+            state='Maharashtra',
+            pincode='425405',
+            latitude=21.3585,
+            longitude=74.8835,
             supports_pickup=True,
-            supports_delivery=False,
-            delivery_fee=0.0,
+            supports_delivery=True,
+            delivery_fee=25.0,
             is_verified=True,
             verification_status='APPROVED',
             is_active=True
         )
-        db.session.add(guardian)
-
-        # Pharmacy 4: City Health Drugstore (PENDING verification for admin workflow test)
-        owner_city = User(
-            email='cityhealth@pharmacy.com',
-            full_name='Vikram Singh',
-            phone='9876543223',
-            role='pharmacy'
-        )
-        owner_city.set_password('pharmacy123')
-        db.session.add(owner_city)
-        db.session.flush()
-
-        city_health = Pharmacy(
-            owner_id=owner_city.id,
-            name='City Health Drugstore',
-            license_number='DL-KA-2026-PENDING-01',
-            phone='080-28899112',
-            email='care@cityhealth.com',
-            address='15 Whitefield Main Road',
-            city='Bangalore',
-            state='Karnataka',
-            pincode='560066',
-            latitude=12.9698,
-            longitude=77.7499,
-            supports_pickup=True,
-            supports_delivery=True,
-            delivery_fee=45.0,
-            is_verified=False,
-            verification_status='PENDING',
-            is_active=True
-        )
-        db.session.add(city_health)
+        db.session.add(shree_gangai)
 
         db.session.flush()
 
@@ -247,54 +259,38 @@ def seed_database(app=None):
 
         medicines = []
         for m_data in medicines_data:
-            med = Medicine(**m_data)
-            db.session.add(med)
-            medicines.append(med)
+            existing_med = Medicine.query.filter_by(name=m_data['name']).first()
+            if not existing_med:
+                med = Medicine(**m_data)
+                db.session.add(med)
+                medicines.append(med)
+            else:
+                medicines.append(existing_med)
 
         db.session.flush()
 
-        # 5. Inventories across verified pharmacies
-        inventory_configs = [
-            # Apollo stocks
-            (apollo.id, medicines[0].id, 50, 32.0, 'BAT-2024-01', '12/2027'), # Dolo 650
-            (apollo.id, medicines[1].id, 35, 28.0, 'BAT-2024-02', '09/2026'), # Calpol 500
-            (apollo.id, medicines[2].id, 25, 45.0, 'BAT-2024-03', '11/2026'), # Brufen 400
-            (apollo.id, medicines[3].id, 40, 20.0, 'BAT-2024-04', '01/2027'), # Cetzine
-            (apollo.id, medicines[4].id, 15, 110.0, 'BAT-2024-05', '06/2026'), # Mox 500
-            (apollo.id, medicines[5].id, 20, 140.0, 'BAT-2024-06', '08/2026'), # Azee 500
-            (apollo.id, medicines[6].id, 30, 65.0, 'BAT-2024-07', '04/2027'), # Omez 20
-            (apollo.id, medicines[7].id, 60, 48.0, 'BAT-2024-08', '10/2027'), # Glycomet 500
-
-            # MedPlus stocks
-            (medplus.id, medicines[0].id, 40, 30.0, 'BAT-2024-11', '01/2028'), # Dolo 650
-            (medplus.id, medicines[1].id, 20, 26.0, 'BAT-2024-12', '10/2026'), # Calpol 500
-            (medplus.id, medicines[2].id, 30, 42.0, 'BAT-2024-13', '12/2026'), # Brufen 400
-            (medplus.id, medicines[3].id, 50, 18.0, 'BAT-2024-14', '03/2027'), # Cetzine
-            (medplus.id, medicines[4].id, 12, 105.0, 'BAT-2024-15', '05/2026'), # Mox 500
-            (medplus.id, medicines[6].id, 25, 62.0, 'BAT-2024-16', '07/2027'), # Omez 20
-
-            # Guardian Care stocks
-            (guardian.id, medicines[0].id, 25, 33.0, 'BAT-2024-21', '11/2027'), # Dolo 650
-            (guardian.id, medicines[2].id, 15, 46.0, 'BAT-2024-22', '08/2026'), # Brufen 400
-            (guardian.id, medicines[3].id, 18, 22.0, 'BAT-2024-23', '04/2027'), # Cetzine
-            (guardian.id, medicines[7].id, 30, 50.0, 'BAT-2024-24', '11/2027')  # Glycomet 500
-        ]
-
-        for p_id, m_id, qty, pr, bat, exp in inventory_configs:
-            inv = PharmacyInventory(
-                pharmacy_id=p_id,
-                medicine_id=m_id,
-                quantity=qty,
-                price=pr,
-                batch_number=bat,
-                expiry_date=exp,
-                notes='Standard batch inventory'
-            )
-            inv.recalculate_stock_status()
-            db.session.add(inv)
+        # 5. Inventories across all 4 verified pharmacies in Shirpur-Warwade
+        pharmacies = [ram_medical, shreeji_medical, tasir_medical, shree_gangai]
+        
+        for p in pharmacies:
+            for idx, med in enumerate(medicines):
+                existing_inv = PharmacyInventory.query.filter_by(pharmacy_id=p.id, medicine_id=med.id).first()
+                if not existing_inv:
+                    base_price = 30.0 + (idx * 12.0)
+                    inv = PharmacyInventory(
+                        pharmacy_id=p.id,
+                        medicine_id=med.id,
+                        quantity=45,
+                        price=base_price,
+                        batch_number=f'BAT-SHR-{p.id}-{idx+1}',
+                        expiry_date='12/2027',
+                        notes='Fresh batch inventory'
+                    )
+                    inv.recalculate_stock_status()
+                    db.session.add(inv)
 
         db.session.commit()
-        print("Database successfully seeded with realistic catalogue, verified pharmacies, and inventory!")
+        print("Database successfully seeded with Ram Medical, Shree Ji Medical, Tasir Medical, and Shree Gangai Medical!")
 
 if __name__ == '__main__':
     seed_database()

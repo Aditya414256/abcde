@@ -73,21 +73,21 @@ def test_medicine_search_and_suggestions(app):
 # ==========================================
 def test_inventory_business_rules(app):
     with app.app_context():
-        apollo = Pharmacy.query.filter_by(name='Apollo HealthCare & Pharmacy').first()
+        ram = Pharmacy.query.filter_by(name='Ram Medical').first()
         med = Medicine.query.filter_by(name='Dolo 650').first()
 
         # Update to low stock
-        inv = InventoryService.update_inventory(apollo.id, med.id, quantity=5, price=35.0)
+        inv = InventoryService.update_inventory(ram.id, med.id, quantity=5, price=35.0)
         assert inv.stock_status == 'LOW_STOCK'
         assert inv.quantity == 5
 
         # Update to out of stock
-        inv = InventoryService.update_inventory(apollo.id, med.id, quantity=0)
+        inv = InventoryService.update_inventory(ram.id, med.id, quantity=0)
         assert inv.stock_status == 'OUT_OF_STOCK'
 
         # Negative stock constraint
         with pytest.raises(ValueError):
-            InventoryService.update_inventory(apollo.id, med.id, quantity=-1)
+            InventoryService.update_inventory(ram.id, med.id, quantity=-1)
 
 # ==========================================
 # 4. Pharmacy Registration & Admin Verification
@@ -132,15 +132,15 @@ def test_pharmacy_registration_starts_pending(app):
 def test_order_creation_and_stock_decrement(app):
     with app.app_context():
         customer = User.query.filter_by(email='customer@example.com').first()
-        apollo = Pharmacy.query.filter_by(name='Apollo HealthCare & Pharmacy').first()
+        ram = Pharmacy.query.filter_by(name='Ram Medical').first()
         dolo = Medicine.query.filter_by(name='Dolo 650').first()
 
-        inv_before = PharmacyInventory.query.filter_by(pharmacy_id=apollo.id, medicine_id=dolo.id).first()
+        inv_before = PharmacyInventory.query.filter_by(pharmacy_id=ram.id, medicine_id=dolo.id).first()
         initial_qty = inv_before.quantity
 
         order = OrderService.create_order(
             customer_id=customer.id,
-            pharmacy_id=apollo.id,
+            pharmacy_id=ram.id,
             medicine_id=dolo.id,
             quantity=2,
             order_type='PICKUP'
@@ -151,30 +151,30 @@ def test_order_creation_and_stock_decrement(app):
         assert order.quantity == 2
 
         # Verify safe stock decrement
-        inv_after = PharmacyInventory.query.filter_by(pharmacy_id=apollo.id, medicine_id=dolo.id).first()
+        inv_after = PharmacyInventory.query.filter_by(pharmacy_id=ram.id, medicine_id=dolo.id).first()
         assert inv_after.quantity == initial_qty - 2
 
         # Test state machine transition: PENDING -> ACCEPTED -> CONFIRMED -> PREPARING -> READY_FOR_PICKUP -> COMPLETED
-        OrderService.update_order_status(order.id, apollo.owner_id, 'pharmacy', 'ACCEPTED')
+        OrderService.update_order_status(order.id, ram.owner_id, 'pharmacy', 'ACCEPTED')
         assert order.status == 'ACCEPTED'
 
-        OrderService.update_order_status(order.id, apollo.owner_id, 'pharmacy', 'CONFIRMED')
+        OrderService.update_order_status(order.id, ram.owner_id, 'pharmacy', 'CONFIRMED')
         assert order.status == 'CONFIRMED'
 
         # Cannot skip state (e.g. directly to COMPLETED from CONFIRMED)
         with pytest.raises(ValueError):
-            OrderService.update_order_status(order.id, apollo.owner_id, 'pharmacy', 'COMPLETED')
+            OrderService.update_order_status(order.id, ram.owner_id, 'pharmacy', 'COMPLETED')
 
         # Test stock restoration on cancellation
         order_to_cancel = OrderService.create_order(
             customer_id=customer.id,
-            pharmacy_id=apollo.id,
+            pharmacy_id=ram.id,
             medicine_id=dolo.id,
             quantity=3,
             order_type='PICKUP'
         )
         qty_after_order2 = inv_after.quantity
-        OrderService.update_order_status(order_to_cancel.id, apollo.owner_id, 'pharmacy', 'REJECTED')
+        OrderService.update_order_status(order_to_cancel.id, ram.owner_id, 'pharmacy', 'REJECTED')
         assert inv_after.quantity == qty_after_order2 + 3
 
 # ==========================================
@@ -183,9 +183,9 @@ def test_order_creation_and_stock_decrement(app):
 def test_auto_nearest_pickup_selection(app):
     with app.app_context():
         dolo = Medicine.query.filter_by(name='Dolo 650').first()
-        # Coordinates near Apollo MG Road (12.9716, 77.5946)
-        user_lat = 12.9720
-        user_lon = 77.5950
+        # Coordinates near Ram Medical in Shirpur (21.3565, 74.8810)
+        user_lat = 21.3566
+        user_lon = 74.8811
 
         nearest = OrderService.find_nearest_eligible_pickup_pharmacy(
             medicine_id=dolo.id,
@@ -194,7 +194,7 @@ def test_auto_nearest_pickup_selection(app):
             quantity=1
         )
         assert nearest is not None
-        assert nearest['pharmacy'].name == 'Apollo HealthCare & Pharmacy'
+        assert nearest['pharmacy'].name == 'Ram Medical'
         assert nearest['distance_km'] < 1.0
 
 # ==========================================
@@ -205,15 +205,16 @@ def test_delivery_pharmacies_listing(app):
         dolo = Medicine.query.filter_by(name='Dolo 650').first()
         pharmacies = OrderService.find_eligible_delivery_pharmacies(
             medicine_id=dolo.id,
-            user_lat=12.9716,
-            user_lon=77.5946,
+            user_lat=21.3565,
+            user_lon=74.8810,
             quantity=1
         )
-        assert len(pharmacies) >= 2
-        # Guardian Care should not be present because supports_delivery is False
+        assert len(pharmacies) >= 4
         names = [p['pharmacy_name'] for p in pharmacies]
-        assert 'Apollo HealthCare & Pharmacy' in names
-        assert 'Guardian Care Pharmacy' not in names
+        assert 'Ram Medical' in names
+        assert 'Shree Ji Medical' in names
+        assert 'Tasir Medical' in names
+        assert 'Shree Gangai Medical' in names
 
 # ==========================================
 # 8. Full Client API Integration
@@ -239,11 +240,11 @@ def test_client_api_workflow(client):
     assert len(suggestions) > 0
     med_id = suggestions[0]['id']
 
-    # 4. Store Pickup Nearest API
+    # 4. Store Pickup Nearest API (near Shirpur)
     pickup_res = client.post('/api/orders/pickup-nearest', json={
         'medicine_id': med_id,
-        'latitude': 12.9720,
-        'longitude': 77.5950,
+        'latitude': 21.3566,
+        'longitude': 74.8811,
         'quantity': 1
     })
     assert pickup_res.status_code == 201
