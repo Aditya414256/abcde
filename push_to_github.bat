@@ -5,12 +5,12 @@ echo ===================================================
 echo.
 cd /d "%~dp0"
 echo Current Directory: %CD%
-echo Pushing branch 'main' to https://github.com/kasarpratik185-svg/medi-demo.git ...
+echo Pushing branch 'main' to https://github.com/Aditya414256/abcde.git ...
 echo.
-git push -u origin main
+git push -u abcde main
 echo.
 if %ERRORLEVEL% EQU 0 (
-    echo [SUCCESS] Code successfully pushed to GitHub!
+    echo [SUCCESS] Code successfully pushed to GitHub repository!
 ) else (
     echo [FAILED] Git push failed. If prompted, please sign in with GitHub or use a Personal Access Token.
 )

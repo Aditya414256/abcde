@@ -9,20 +9,21 @@ MediFind is a full-stack healthcare web application that bridges customers and v
 ### 1. Customer Medicine Search & Discovery
 * **Home Page Live Autocomplete**: Fast, case-insensitive autocomplete suggestions querying the database catalogue.
 * **Simplified Decision Flow**: Clean 2-choice ordering screen: **Take From Store** vs **Take From Delivery**.
-* **Store Pickup (Automated Selection)**:
-  * Uses browser GPS coordinates and the Haversine formula.
-  * Automatically filters pharmacies that are **Active**, **Admin-Approved / Verified**, **Pickup-Enabled**, and have **Sufficient Stock**.
-  * Selects the nearest store automatically — no manual store browsing required.
+* **Store Pickup (Customer Pharmacy Choice)**:
+  * Lists all active, verified, pickup-enabled pharmacies carrying the selected medicine in stock.
+  * Shows pharmacy name, address, unit price, stock quantity, stock status badge, and distance (using Haversine GPS formula when permitted).
+  * The customer directly selects their preferred store and reviews order summary before confirmation.
+  * For prescription medicines: customer does not need to upload a digital prescription during checkout; brings their physical prescription for counter verification before dispensing.
 * **Home Delivery**:
   * Lists active, verified, delivery-enabled pharmacies showing name and distance.
-  * Dedicated delivery checkout form with address, contact details, quantity, and optional prescription attachment.
+  * Dedicated delivery checkout form with address, contact details, quantity, and mandatory prescription document upload for prescription medicines.
 
 ### 2. Pharmacy Portal
 * **Real-time Order Processing**: Manage incoming Store Pickup and Home Delivery orders.
 * **Strict Order State Machine**:
   `PENDING` ➔ `ACCEPTED` ➔ `CONFIRMED` ➔ `PREPARING` ➔ `READY_FOR_PICKUP` / `OUT_FOR_DELIVERY` ➔ `COMPLETED`.
 * **Stock & Inventory Control**: Update quantity, price, batch numbers, and expiry dates with automatic stock status recalculation (`AVAILABLE`, `LOW_STOCK`, `OUT_OF_STOCK`).
-* **Prescription Review**: Authorized manual human review for uploaded prescription documents.
+* **Prescription Review & Physical Counter Verification**: Verification of digital prescriptions for delivery orders, and counter verification protocol for pickup orders.
 
 ### 3. Admin Verification Portal
 * **Pharmacy Licensure Review**: Admin reviews pharmacy store names and Drug License numbers.
@@ -31,8 +32,10 @@ MediFind is a full-stack healthcare web application that bridges customers and v
 * **Platform Metrics**: View total pharmacies, pending verifications, verified stores, and order volume.
 
 ### 4. Safety & Security
-* Non-negative stock enforcement with transactional stock decrements.
+* Non-negative stock enforcement with transactional stock decrements and automatic rollback on failures.
 * Automatic inventory restoration on order cancellation or rejection.
+* Graceful, decoupled in-app notifications preventing order duplication or partial state failures.
+* Automatic schema migration check on application startup.
 * Protected prescription storage (not publicly exposed).
 * Role-based server-side authentication (Customer, Pharmacy, Admin) with Flask-Login and password hashing.
 
@@ -64,7 +67,7 @@ python run.py
 The server will start at:
 👉 **`http://127.0.0.1:5000`**
 
-The database (`medifind.db`) is automatically seeded with verified pharmacies, medicines, and inventory on first run.
+The database (`medifind.db`) is automatically seeded with verified pharmacies, medicines, and inventory on first run, with automated schema migrations.
 
 ---
 
@@ -75,15 +78,17 @@ Execute the automated test suite with pytest:
 python -m pytest tests/test_medifind.py -v
 ```
 
-All 8 test suites validate:
+All 31 test suites validate:
 * Haversine distance calculations
 * Autocomplete & catalogue search
 * Non-negative inventory rules & status updates
 * Pharmacy registration and admin approval flow
 * Order creation, stock decrement, state machine & cancellation stock restoration
-* Auto-nearest pharmacy selection for store pickup
-* Delivery pharmacy distance listing
-* Client REST API integration
+* Customer-choice store pickup listing and sorting
+* Prescription policies (counter verification for pickup vs mandatory upload for delivery)
+* Transaction rollback safety on commit errors
+* Resilient notification handling (no duplicate orders)
+* Error message sanitization preventing sensitive leaks
 
 ---
 
