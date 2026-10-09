@@ -1,17 +1,7 @@
 // Navbar management for authentication state & consistent navigation
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // 1. Ensure "Find Medicine" nav button is visible and navigates properly
-    const findMediButtons = document.querySelectorAll('.find-medicine');
-    findMediButtons.forEach(btn => {
-        btn.style.display = '';
-        btn.onclick = () => {
-            const targetPage = window.location.pathname.includes('Medifinder') ? 'Medifinder.html' : 'FindMedi.html';
-            window.location.href = targetPage;
-        };
-    });
-
-    // 2. Check current authentication state
+    // Check current authentication state
     try {
         const res = await API.getCurrentUser();
         const section2 = document.querySelector('.section2');
