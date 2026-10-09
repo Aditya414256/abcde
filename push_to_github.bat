@@ -5,7 +5,7 @@ echo ===================================================
 echo.
 cd /d "%~dp0"
 echo Current Directory: %CD%
-echo Pushing branch 'main' to https://github.com/kasarpratik185-svg/Medifinder_Project.git ...
+echo Pushing branch 'main' to https://github.com/kasarpratik185-svg/medi-demo.git ...
 echo.
 git push -u origin main
 echo.
