@@ -4,12 +4,28 @@ from backend.app import create_app
 from backend.database import db
 from backend.models import User, Pharmacy, Medicine, PharmacyInventory
 
+def ensure_schema_migrations():
+    """Ensure any newly added columns exist in tables for existing SQLite/DB files."""
+    try:
+        from sqlalchemy import inspect, text
+        inspector = inspect(db.engine)
+        if 'orders' in inspector.get_table_names():
+            order_cols = [c['name'] for c in inspector.get_columns('orders')]
+            if 'prescription_pending_at_pickup' not in order_cols:
+                with db.engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE orders ADD COLUMN prescription_pending_at_pickup BOOLEAN NOT NULL DEFAULT 0"))
+    except Exception as e:
+        print(f"Schema migration note: {e}")
+
 def seed_database(app=None):
     if app is None:
         app = create_app()
     with app.app_context():
         # Create all database tables
         db.create_all()
+
+        # Ensure any newly added columns exist in tables
+        ensure_schema_migrations()
 
         # Check if already seeded with new data
         if Pharmacy.query.filter_by(name='Ram Medical').first():

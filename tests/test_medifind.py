@@ -178,24 +178,367 @@ def test_order_creation_and_stock_decrement(app):
         assert inv_after.quantity == qty_after_order2 + 3
 
 # ==========================================
-# 6. Store Pickup Auto-Nearest Selection
+# 6. Store Pickup — Pharmacy Listing (new customer-choice flow)
 # ==========================================
-def test_auto_nearest_pickup_selection(app):
+def test_pickup_pharmacy_listing_returns_all_eligible(app):
+    """All eligible pickup pharmacies are returned — not just the nearest one."""
     with app.app_context():
         dolo = Medicine.query.filter_by(name='Dolo 650').first()
-        # Coordinates near Ram Medical in Shirpur (21.3565, 74.8810)
-        user_lat = 21.3566
-        user_lon = 74.8811
-
-        nearest = OrderService.find_nearest_eligible_pickup_pharmacy(
+        pharmacies = OrderService.find_eligible_pickup_pharmacies(
             medicine_id=dolo.id,
-            user_lat=user_lat,
-            user_lon=user_lon,
+            user_lat=21.3565,
+            user_lon=74.8810,
             quantity=1
         )
-        assert nearest is not None
-        assert nearest['pharmacy'].name == 'Ram Medical'
-        assert nearest['distance_km'] < 1.0
+        assert len(pharmacies) >= 4
+        names = [p['pharmacy_name'] for p in pharmacies]
+        assert 'Ram Medical' in names
+        assert 'Shree Ji Medical' in names
+        assert 'Tasir Medical' in names
+        assert 'Shree Gangai Medical' in names
+
+def test_pickup_pharmacy_listing_sorted_by_distance(app):
+    """When coordinates are provided, pharmacies are sorted by nearest first."""
+    with app.app_context():
+        dolo = Medicine.query.filter_by(name='Dolo 650').first()
+        # Coordinates very close to Ram Medical (21.3565, 74.8810)
+        pharmacies = OrderService.find_eligible_pickup_pharmacies(
+            medicine_id=dolo.id,
+            user_lat=21.3566,
+            user_lon=74.8811,
+            quantity=1
+        )
+        assert len(pharmacies) >= 2
+        # Must be sorted ascending by distance_km
+        distances = [p['distance_km'] for p in pharmacies if p['distance_km'] is not None]
+        assert distances == sorted(distances)
+        # Nearest should be Ram Medical
+        assert pharmacies[0]['pharmacy_name'] == 'Ram Medical'
+        assert pharmacies[0]['distance_km'] < 1.0
+
+def test_pickup_listing_without_location(app):
+    """Missing location does NOT prevent pharmacy listing — all eligible stores shown."""
+    with app.app_context():
+        dolo = Medicine.query.filter_by(name='Dolo 650').first()
+        pharmacies = OrderService.find_eligible_pickup_pharmacies(
+            medicine_id=dolo.id,
+            user_lat=None,
+            user_lon=None,
+            quantity=1
+        )
+        assert len(pharmacies) >= 4
+        # All distances should be None when no coords given
+        for p in pharmacies:
+            assert p['distance_km'] is None
+            assert p['distance_text'] is None
+
+def test_pickup_listing_excludes_ineligible_pharmacies(app):
+    """Inactive, unverified, non-pickup, and out-of-stock pharmacies are excluded."""
+    with app.app_context():
+        dolo = Medicine.query.filter_by(name='Dolo 650').first()
+
+        # Create an unverified pharmacy with stock
+        owner = User(email='unverified@test.com', full_name='Unverified Owner',
+                     phone='9000000001', role='pharmacy')
+        owner.set_password('pass123')
+        db.session.add(owner)
+        db.session.flush()
+
+        unverified = Pharmacy(
+            owner_id=owner.id, name='Unverified Store',
+            license_number='DL-UV-9999', phone='9000000001',
+            email='unverified@test.com', address='Test Addr',
+            city='Shirpur-Warwade', state='Maharashtra', pincode='425405',
+            latitude=21.3570, longitude=74.8820,
+            supports_pickup=True, is_verified=False,
+            verification_status='PENDING', is_active=True
+        )
+        db.session.add(unverified)
+        db.session.flush()
+
+        # Add inventory for this pharmacy
+        inv = PharmacyInventory(
+            pharmacy_id=unverified.id, medicine_id=dolo.id,
+            quantity=10, price=35.0, batch_number='BAT-UV-1',
+            expiry_date='12/2027'
+        )
+        inv.recalculate_stock_status()
+        db.session.add(inv)
+        db.session.commit()
+
+        pharmacies = OrderService.find_eligible_pickup_pharmacies(
+            medicine_id=dolo.id, user_lat=None, user_lon=None, quantity=1
+        )
+        names = [p['pharmacy_name'] for p in pharmacies]
+        assert 'Unverified Store' not in names
+
+        # Now make an active verified pharmacy inactive
+        ram = Pharmacy.query.filter_by(name='Ram Medical').first()
+        ram.is_active = False
+        db.session.commit()
+
+        pharmacies_after = OrderService.find_eligible_pickup_pharmacies(
+            medicine_id=dolo.id, user_lat=None, user_lon=None, quantity=1
+        )
+        names_after = [p['pharmacy_name'] for p in pharmacies_after]
+        assert 'Ram Medical' not in names_after
+
+        # Restore for other tests
+        ram.is_active = True
+        db.session.commit()
+
+def test_pickup_listing_excludes_out_of_stock(app):
+    """Pharmacies with insufficient stock are excluded from the listing."""
+    with app.app_context():
+        dolo = Medicine.query.filter_by(name='Dolo 650').first()
+        ram = Pharmacy.query.filter_by(name='Ram Medical').first()
+
+        # Set Ram Medical stock to 0
+        inv = PharmacyInventory.query.filter_by(
+            pharmacy_id=ram.id, medicine_id=dolo.id
+        ).first()
+        inv.quantity = 0
+        inv.recalculate_stock_status()
+        db.session.commit()
+
+        pharmacies = OrderService.find_eligible_pickup_pharmacies(
+            medicine_id=dolo.id, user_lat=None, user_lon=None, quantity=1
+        )
+        names = [p['pharmacy_name'] for p in pharmacies]
+        assert 'Ram Medical' not in names
+
+        # Restore stock
+        inv.quantity = 20
+        inv.recalculate_stock_status()
+        db.session.commit()
+
+def test_pickup_listing_payload_has_no_sensitive_fields(app):
+    """Pharmacy listing payload must not expose owner_id, password, or email."""
+    with app.app_context():
+        dolo = Medicine.query.filter_by(name='Dolo 650').first()
+        pharmacies = OrderService.find_eligible_pickup_pharmacies(
+            medicine_id=dolo.id, user_lat=None, user_lon=None, quantity=1
+        )
+        assert len(pharmacies) > 0
+        for p in pharmacies:
+            assert 'owner_id' not in p
+            assert 'password_hash' not in p
+            assert 'email' not in p
+            # Required safe fields present
+            assert 'pharmacy_id' in p
+            assert 'pharmacy_name' in p
+            assert 'address' in p
+            assert 'city' in p
+            assert 'unit_price' in p
+            assert 'stock_quantity' in p
+            assert 'stock_status' in p
+            assert 'is_verified' in p
+
+def test_pickup_listing_invalid_medicine(app):
+    """Invalid medicine ID raises ValueError."""
+    with app.app_context():
+        with pytest.raises(ValueError, match='Medicine not found'):
+            OrderService.find_eligible_pickup_pharmacies(
+                medicine_id=999999, user_lat=None, user_lon=None, quantity=1
+            )
+
+def test_pickup_listing_invalid_quantity(app):
+    """Zero or negative quantity raises ValueError."""
+    with app.app_context():
+        dolo = Medicine.query.filter_by(name='Dolo 650').first()
+        with pytest.raises(ValueError):
+            OrderService.find_eligible_pickup_pharmacies(
+                medicine_id=dolo.id, user_lat=None, user_lon=None, quantity=0
+            )
+        with pytest.raises(ValueError):
+            OrderService.find_eligible_pickup_pharmacies(
+                medicine_id=dolo.id, user_lat=None, user_lon=None, quantity=-5
+            )
+
+def test_pickup_order_at_customer_selected_pharmacy(app):
+    """Order is created for the pharmacy the customer explicitly selected — not auto-selected."""
+    with app.app_context():
+        customer = User.query.filter_by(email='customer@example.com').first()
+        dolo = Medicine.query.filter_by(name='Dolo 650').first()
+
+        # Customer picks Shree Ji Medical — NOT the geographically nearest (Ram Medical)
+        shreeji = Pharmacy.query.filter_by(name='Shree Ji Medical').first()
+
+        inv_before = PharmacyInventory.query.filter_by(
+            pharmacy_id=shreeji.id, medicine_id=dolo.id
+        ).first()
+        initial_qty = inv_before.quantity
+
+        order = OrderService.create_order(
+            customer_id=customer.id,
+            pharmacy_id=shreeji.id,
+            medicine_id=dolo.id,
+            quantity=1,
+            order_type='PICKUP'
+        )
+
+        assert order.pharmacy_id == shreeji.id
+        assert order.status == 'PENDING'
+        assert order.order_type == 'PICKUP'
+
+        # Inventory decremented at the selected pharmacy
+        inv_after = PharmacyInventory.query.filter_by(
+            pharmacy_id=shreeji.id, medicine_id=dolo.id
+        ).first()
+        assert inv_after.quantity == initial_qty - 1
+
+def test_opening_pickup_listing_does_not_create_order(app):
+    """Calling find_eligible_pickup_pharmacies must never create an order."""
+    with app.app_context():
+        dolo = Medicine.query.filter_by(name='Dolo 650').first()
+        order_count_before = Order.query.count()
+
+        OrderService.find_eligible_pickup_pharmacies(
+            medicine_id=dolo.id, user_lat=21.3565, user_lon=74.8810, quantity=1
+        )
+
+        order_count_after = Order.query.count()
+        assert order_count_after == order_count_before
+
+def test_pickup_order_invalid_pharmacy_id(app):
+    """Invalid pharmacy_id is rejected by create_order."""
+    with app.app_context():
+        customer = User.query.filter_by(email='customer@example.com').first()
+        dolo = Medicine.query.filter_by(name='Dolo 650').first()
+
+        with pytest.raises(ValueError, match='Pharmacy not found'):
+            OrderService.create_order(
+                customer_id=customer.id,
+                pharmacy_id=999999,
+                medicine_id=dolo.id,
+                quantity=1,
+                order_type='PICKUP'
+            )
+
+def test_pickup_order_insufficient_stock_rejected(app):
+    """Order requesting more stock than available is rejected."""
+    with app.app_context():
+        customer = User.query.filter_by(email='customer@example.com').first()
+        ram = Pharmacy.query.filter_by(name='Ram Medical').first()
+        dolo = Medicine.query.filter_by(name='Dolo 650').first()
+
+        inv = PharmacyInventory.query.filter_by(
+            pharmacy_id=ram.id, medicine_id=dolo.id
+        ).first()
+        inv.quantity = 2
+        db.session.commit()
+
+        with pytest.raises(ValueError, match='Insufficient stock'):
+            OrderService.create_order(
+                customer_id=customer.id,
+                pharmacy_id=ram.id,
+                medicine_id=dolo.id,
+                quantity=99,
+                order_type='PICKUP'
+            )
+
+        # Restore
+        inv.quantity = 20
+        db.session.commit()
+
+def test_pickup_order_inactive_pharmacy_rejected(app):
+    """Order against an inactive pharmacy is rejected."""
+    with app.app_context():
+        customer = User.query.filter_by(email='customer@example.com').first()
+        ram = Pharmacy.query.filter_by(name='Ram Medical').first()
+        dolo = Medicine.query.filter_by(name='Dolo 650').first()
+
+        ram.is_active = False
+        db.session.commit()
+
+        with pytest.raises(ValueError, match='inactive'):
+            OrderService.create_order(
+                customer_id=customer.id,
+                pharmacy_id=ram.id,
+                medicine_id=dolo.id,
+                quantity=1,
+                order_type='PICKUP'
+            )
+
+        ram.is_active = True
+        db.session.commit()
+
+def test_rx_pickup_allowed_without_uploaded_prescription(app):
+    """Store Pickup for an Rx medicine succeeds without an uploaded prescription file.
+    The order must be flagged prescription_pending_at_pickup=True."""
+    with app.app_context():
+        customer = User.query.filter_by(email='customer@example.com').first()
+        ram = Pharmacy.query.filter_by(name='Ram Medical').first()
+        mox = Medicine.query.filter_by(name='Mox 500').first()  # requires_prescription=True
+
+        order = OrderService.create_order(
+            customer_id=customer.id,
+            pharmacy_id=ram.id,
+            medicine_id=mox.id,
+            quantity=1,
+            order_type='PICKUP'
+        )
+
+        assert order.status == 'PENDING'
+        assert order.prescription_id is None
+        assert order.prescription_pending_at_pickup is True
+
+
+def test_rx_delivery_blocked_without_uploaded_prescription(app):
+    """Home Delivery for an Rx medicine is rejected when no prescription_id is provided."""
+    with app.app_context():
+        customer = User.query.filter_by(email='customer@example.com').first()
+        ram = Pharmacy.query.filter_by(name='Ram Medical').first()
+        mox = Medicine.query.filter_by(name='Mox 500').first()  # requires_prescription=True
+
+        with pytest.raises(ValueError, match='prescription'):
+            OrderService.create_order(
+                customer_id=customer.id,
+                pharmacy_id=ram.id,
+                medicine_id=mox.id,
+                quantity=1,
+                order_type='DELIVERY',
+                delivery_address='123 Test Street'
+            )
+
+
+def test_otc_pickup_no_prescription_flag(app):
+    """OTC medicine pickup order should have prescription_pending_at_pickup=False."""
+    with app.app_context():
+        customer = User.query.filter_by(email='customer@example.com').first()
+        ram = Pharmacy.query.filter_by(name='Ram Medical').first()
+        dolo = Medicine.query.filter_by(name='Dolo 650').first()  # requires_prescription=False
+
+        order = OrderService.create_order(
+            customer_id=customer.id,
+            pharmacy_id=ram.id,
+            medicine_id=dolo.id,
+            quantity=1,
+            order_type='PICKUP'
+        )
+
+        assert order.prescription_pending_at_pickup is False
+        assert order.prescription_id is None
+
+
+def test_otc_delivery_no_prescription_required(app):
+    """OTC medicine delivery order succeeds without a prescription."""
+    with app.app_context():
+        customer = User.query.filter_by(email='customer@example.com').first()
+        ram = Pharmacy.query.filter_by(name='Ram Medical').first()
+        dolo = Medicine.query.filter_by(name='Dolo 650').first()  # requires_prescription=False
+
+        order = OrderService.create_order(
+            customer_id=customer.id,
+            pharmacy_id=ram.id,
+            medicine_id=dolo.id,
+            quantity=1,
+            order_type='DELIVERY',
+            delivery_address='456 OTC Street'
+        )
+
+        assert order.status == 'PENDING'
+        assert order.prescription_pending_at_pickup is False
 
 # ==========================================
 # 7. Delivery Flow & Pharmacy Selection
@@ -240,17 +583,198 @@ def test_client_api_workflow(client):
     assert len(suggestions) > 0
     med_id = suggestions[0]['id']
 
-    # 4. Store Pickup Nearest API (near Shirpur)
-    pickup_res = client.post('/api/orders/pickup-nearest', json={
+    # 4a. Pickup pharmacies listing (new endpoint — does NOT create an order)
+    list_res = client.get(f'/api/orders/pickup-pharmacies?medicine_id={med_id}&quantity=1&latitude=21.3566&longitude=74.8811')
+    assert list_res.status_code == 200
+    list_data = list_res.get_json()
+    assert list_data['count'] >= 4
+    assert len(list_data['pharmacies']) >= 4
+    # Nearest first when coords provided
+    first_pharmacy = list_data['pharmacies'][0]
+    assert first_pharmacy['pharmacy_name'] == 'Ram Medical'
+    first_pharmacy_id = first_pharmacy['pharmacy_id']
+
+    # Verify no order was created just by listing
+    orders_before = client.get('/api/orders/my-orders').get_json()['orders']
+
+    # 4b. Customer explicitly selects a pharmacy and places a PICKUP order
+    pickup_res = client.post('/api/orders/pickup', json={
+        'pharmacy_id': first_pharmacy_id,
         'medicine_id': med_id,
-        'latitude': 21.3566,
-        'longitude': 74.8811,
         'quantity': 1
     })
     assert pickup_res.status_code == 201
-    assert pickup_res.get_json()['message'] == 'Your order has been placed.'
+    pickup_data = pickup_res.get_json()
+    assert pickup_data['message'] == 'Your order has been placed.'
+    assert pickup_data['order']['order_type'] == 'PICKUP'
+    assert pickup_data['order']['pharmacy_id'] == first_pharmacy_id
+
+    # 4c. Customer can also choose a different (non-nearest) pharmacy
+    list_data2 = client.get(f'/api/orders/pickup-pharmacies?medicine_id={med_id}&quantity=1').get_json()
+    non_nearest = next((p for p in list_data2['pharmacies'] if p['pharmacy_name'] == 'Shree Ji Medical'), None)
+    assert non_nearest is not None
+
+    pickup_res2 = client.post('/api/orders/pickup', json={
+        'pharmacy_id': non_nearest['pharmacy_id'],
+        'medicine_id': med_id,
+        'quantity': 1
+    })
+    assert pickup_res2.status_code == 201
+    assert pickup_res2.get_json()['order']['pharmacy_id'] == non_nearest['pharmacy_id']
 
     # 5. Customer Notifications
     notif_res = client.get('/api/notifications')
     assert notif_res.status_code == 200
     assert len(notif_res.get_json()['notifications']) >= 1
+
+def test_pickup_api_missing_medicine_id(client):
+    """Missing medicine_id returns 400."""
+    client.post('/api/auth/login', json={
+        'email': 'customer@example.com', 'password': 'customer123'
+    })
+    res = client.get('/api/orders/pickup-pharmacies')
+    assert res.status_code == 400
+    assert 'error' in res.get_json()
+
+def test_pickup_api_invalid_pharmacy_returns_400(client):
+    """Placing a pickup order with an invalid pharmacy_id returns 400."""
+    client.post('/api/auth/login', json={
+        'email': 'customer@example.com', 'password': 'customer123'
+    })
+    sugg_res = client.get('/api/medicines/suggestions?q=dolo').get_json()
+    med_id = sugg_res['suggestions'][0]['id']
+
+    res = client.post('/api/orders/pickup', json={
+        'pharmacy_id': 999999,
+        'medicine_id': med_id,
+        'quantity': 1
+    })
+    assert res.status_code == 400
+    assert 'error' in res.get_json()
+
+def test_pickup_api_requires_login(client):
+    """Unauthenticated pickup order POST returns 401."""
+    res = client.post('/api/orders/pickup', json={
+        'pharmacy_id': 1,
+        'medicine_id': 1,
+        'quantity': 1
+    })
+    assert res.status_code == 401
+    assert res.get_json().get('require_login') is True
+
+def test_delivery_workflow_still_works(client):
+    """Home Delivery workflow is unaffected by the Store Pickup changes."""
+    client.post('/api/auth/login', json={
+        'email': 'customer@example.com', 'password': 'customer123'
+    })
+    sugg_res = client.get('/api/medicines/suggestions?q=dolo').get_json()
+    med_id = sugg_res['suggestions'][0]['id']
+
+    # List delivery pharmacies
+    del_list_res = client.get(
+        f'/api/orders/delivery-pharmacies?medicine_id={med_id}&quantity=1&latitude=21.3565&longitude=74.8810'
+    )
+    assert del_list_res.status_code == 200
+    del_data = del_list_res.get_json()
+    assert del_data['count'] >= 4
+    pharmacy_id = del_data['pharmacies'][0]['pharmacy_id']
+
+    # Place delivery order
+    del_order_res = client.post('/api/orders/create', json={
+        'pharmacy_id': pharmacy_id,
+        'medicine_id': med_id,
+        'quantity': 1,
+        'order_type': 'DELIVERY',
+        'delivery_address': '123 Test Street, Shirpur'
+    })
+    assert del_order_res.status_code == 201
+    assert del_order_res.get_json()['order']['order_type'] == 'DELIVERY'
+
+# ==========================================
+# 11. Order Transaction and Error Handling Tests
+# ==========================================
+def test_order_creation_succeeds_even_if_notification_fails(app, monkeypatch):
+    """If NotificationService fails, order commit is preserved and not duplicated or rolled back."""
+    with app.app_context():
+        customer = User.query.filter_by(role='customer').first()
+        pharmacy = Pharmacy.query.filter_by(supports_delivery=True, is_active=True, is_verified=True).first()
+        inv = PharmacyInventory.query.filter_by(pharmacy_id=pharmacy.id).first()
+        initial_stock = inv.quantity
+
+        # Monkeypatch NotificationService.create_notification to simulate failure
+        def failing_notify(*args, **kwargs):
+            raise RuntimeError("Notification service downstream timeout")
+
+        monkeypatch.setattr(NotificationService, 'create_notification', failing_notify)
+
+        # Order creation should still succeed because order is committed
+        order = OrderService.create_order(
+            customer_id=customer.id,
+            pharmacy_id=pharmacy.id,
+            medicine_id=inv.medicine_id,
+            quantity=1,
+            order_type='DELIVERY',
+            delivery_address='456 Resilient Lane'
+        )
+
+        assert order is not None
+        assert order.id is not None
+        assert order.status == 'PENDING'
+
+        # Check inventory was decremented exactly once
+        db.session.refresh(inv)
+        assert inv.quantity == initial_stock - 1
+
+def test_order_creation_endpoint_hides_internal_traceback_on_error(client, monkeypatch):
+    """Unexpected exception in /api/orders/create returns 500 without leaking stack traces or db internals."""
+    client.post('/api/auth/login', json={
+        'email': 'customer@example.com', 'password': 'customer123'
+    })
+
+    def buggy_create(*args, **kwargs):
+        raise RuntimeError("Sensitive DB password / internal trace at line 42")
+
+    monkeypatch.setattr(OrderService, 'create_order', buggy_create)
+
+    res = client.post('/api/orders/create', json={
+        'pharmacy_id': 1,
+        'medicine_id': 1,
+        'quantity': 1,
+        'order_type': 'DELIVERY',
+        'delivery_address': 'Secret Address 1'
+    })
+
+    assert res.status_code == 500
+    data = res.get_json()
+    assert data['error'] == 'Failed to create order.'
+    # Ensure no internal error detail leaked in response
+    assert 'Sensitive' not in str(data)
+    assert 'traceback' not in str(data).lower()
+
+def test_order_rollback_on_database_commit_failure(app, monkeypatch):
+    """If database commit fails during order creation, inventory stock is rolled back and no order is persisted."""
+    with app.app_context():
+        customer = User.query.filter_by(role='customer').first()
+        pharmacy = Pharmacy.query.filter_by(supports_delivery=True, is_active=True, is_verified=True).first()
+        inv = PharmacyInventory.query.filter_by(pharmacy_id=pharmacy.id).first()
+        initial_stock = inv.quantity
+
+        def failing_commit():
+            raise Exception("Simulated SQLite operational lock")
+
+        monkeypatch.setattr(db.session, 'commit', failing_commit)
+
+        with pytest.raises(Exception):
+            OrderService.create_order(
+                customer_id=customer.id,
+                pharmacy_id=pharmacy.id,
+                medicine_id=inv.medicine_id,
+                quantity=1,
+                order_type='DELIVERY',
+                delivery_address='Fail Street'
+            )
+
+        # Inventory must not have been decremented
+        db.session.rollback()
+        db.session.refresh(inv)
+        assert inv.quantity == initial_stock

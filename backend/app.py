@@ -13,6 +13,10 @@ def create_app(config_class=Config):
     # Initialize extensions
     db.init_app(app)
 
+    with app.app_context():
+        from backend.seed import ensure_schema_migrations
+        ensure_schema_migrations()
+
     login_manager = LoginManager()
     login_manager.init_app(app)
     login_manager.login_view = 'auth.login'

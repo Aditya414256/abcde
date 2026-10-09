@@ -1,21 +1,19 @@
+import logging
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 from backend.services.order_service import OrderService
 from backend.services.medicine_service import MedicineService
 from backend.models import Order
 
+logger = logging.getLogger(__name__)
+
 order_bp = Blueprint('orders', __name__, url_prefix='/api/orders')
 
 @order_bp.route('/pickup-nearest', methods=['POST'])
 def auto_pickup_order():
     """
-    Store Pickup Flow:
-    Automatically finds nearest eligible pharmacy and creates a PICKUP order.
-    Requirements:
-    - User location (lat, lon)
-    - Medicine ID
-    - Pharmacy active + verified + pickup enabled + has stock
-    - Customer never manually picks the pharmacy.
+    DEPRECATED customer path — kept for backward compatibility only.
+    The customer-facing Store Pickup flow now uses /pickup-pharmacies + /pickup.
     """
     if not current_user.is_authenticated:
         return jsonify({'error': 'Please login to place an order.', 'require_login': True}), 401
@@ -69,9 +67,90 @@ def auto_pickup_order():
         }), 201
 
     except ValueError as e:
+        logger.warning("Auto pickup order validation error: %s", e)
         return jsonify({'error': str(e)}), 400
     except Exception as e:
+        logger.exception("Unexpected error processing auto pickup order: %s", e)
         return jsonify({'error': 'Failed to process pickup order.'}), 500
+
+
+@order_bp.route('/pickup-pharmacies', methods=['GET'])
+def get_pickup_pharmacies():
+    """
+    Store Pickup — customer pharmacy listing.
+    Returns all eligible pickup pharmacies for the requested medicine + quantity.
+    Sorted by distance when coordinates are supplied; never auto-selects a pharmacy.
+    Does NOT create any order.
+    """
+    medicine_id = request.args.get('medicine_id', type=int)
+    user_lat = request.args.get('latitude', type=float)
+    user_lon = request.args.get('longitude', type=float)
+    quantity = request.args.get('quantity', 1, type=int)
+
+    if not medicine_id:
+        return jsonify({'error': 'Medicine ID is required.'}), 400
+
+    try:
+        pharmacies = OrderService.find_eligible_pickup_pharmacies(
+            medicine_id=medicine_id,
+            user_lat=user_lat,
+            user_lon=user_lon,
+            quantity=quantity
+        )
+        return jsonify({
+            'medicine_id': medicine_id,
+            'count': len(pharmacies),
+            'pharmacies': pharmacies
+        }), 200
+    except ValueError as e:
+        logger.warning("Pickup pharmacy search error: %s", e)
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        logger.exception("Unexpected error fetching pickup pharmacies: %s", e)
+        return jsonify({'error': 'Failed to retrieve eligible pharmacies.'}), 500
+
+
+@order_bp.route('/pickup', methods=['POST'])
+def create_pickup_order():
+    """
+    Store Pickup — customer explicit pharmacy selection.
+    Creates a PICKUP order for the pharmacy the customer explicitly chose.
+    Server independently validates pharmacy eligibility, pickup support,
+    inventory, and prescription before creating the order.
+    """
+    if not current_user.is_authenticated:
+        return jsonify({'error': 'Please login to place an order.', 'require_login': True}), 401
+
+    data = request.get_json() or {}
+    pharmacy_id = data.get('pharmacy_id')
+    medicine_id = data.get('medicine_id')
+    quantity = data.get('quantity', 1)
+    customer_notes = data.get('customer_notes')
+    prescription_id = data.get('prescription_id')
+
+    if not pharmacy_id or not medicine_id:
+        return jsonify({'error': 'Pharmacy ID and Medicine ID are required.'}), 400
+
+    try:
+        order = OrderService.create_order(
+            customer_id=current_user.id,
+            pharmacy_id=pharmacy_id,
+            medicine_id=medicine_id,
+            quantity=quantity,
+            order_type='PICKUP',
+            customer_notes=customer_notes,
+            prescription_id=prescription_id
+        )
+        return jsonify({
+            'message': 'Your order has been placed.',
+            'order': order.to_dict()
+        }), 201
+    except ValueError as e:
+        logger.warning("Pickup order validation error: %s", e)
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        logger.exception("Unexpected error creating pickup order: %s", e)
+        return jsonify({'error': 'Failed to create pickup order.'}), 500
 
 
 @order_bp.route('/delivery-pharmacies', methods=['GET'])
@@ -102,7 +181,11 @@ def get_delivery_pharmacies():
             'pharmacies': pharmacies
         }), 200
     except ValueError as e:
+        logger.warning("Delivery pharmacy search error: %s", e)
         return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        logger.exception("Unexpected error fetching delivery pharmacies: %s", e)
+        return jsonify({'error': 'Failed to retrieve eligible pharmacies.'}), 500
 
 
 @order_bp.route('/create', methods=['POST'])
@@ -149,8 +232,10 @@ def create_delivery_order():
         }), 201
 
     except ValueError as e:
+        logger.warning("Delivery order validation error: %s", e)
         return jsonify({'error': str(e)}), 400
     except Exception as e:
+        logger.exception("Unexpected error creating delivery order: %s", e)
         return jsonify({'error': 'Failed to create order.'}), 500
 
 
@@ -188,4 +273,8 @@ def update_order_status(order_id):
             'order': order.to_dict()
         }), 200
     except (ValueError, PermissionError) as e:
+        logger.warning("Order status update failed for order %s: %s", order_id, e)
         return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        logger.exception("Unexpected error updating status for order %s: %s", order_id, e)
+        return jsonify({'error': 'Failed to update order status.'}), 500

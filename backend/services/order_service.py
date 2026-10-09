@@ -1,9 +1,12 @@
+import logging
 import uuid
 from datetime import datetime
 from backend.models import Order, Pharmacy, Medicine, PharmacyInventory, Prescription
 from backend.services.location_service import LocationService
 from backend.services.notification_service import NotificationService
 from backend.database import db
+
+logger = logging.getLogger(__name__)
 
 class OrderService:
     # State machine definition
@@ -63,7 +66,7 @@ class OrderService:
         if order_type == 'DELIVERY' and not pharmacy.supports_delivery:
             raise ValueError("This pharmacy does not support home delivery.")
 
-        if order_type == 'DELIVERY' and not delivery_address:
+        if order_type == 'DELIVERY' and (not delivery_address or not str(delivery_address).strip()):
             raise ValueError("Delivery address is required for home delivery.")
 
         # Validate Medicine
@@ -71,8 +74,19 @@ class OrderService:
         if not medicine:
             raise ValueError("Medicine not found.")
 
-        if medicine.requires_prescription and not prescription_id:
-            raise ValueError("This medicine requires a valid prescription to order.")
+        # Prescription validation — logic differs by order type
+        prescription_pending_at_pickup = False
+        if medicine.requires_prescription:
+            if order_type == 'DELIVERY':
+                # Delivery: customer MUST upload a prescription file online
+                if not prescription_id:
+                    raise ValueError(
+                        "This medicine requires a valid prescription. "
+                        "Please upload your prescription before placing a delivery order."
+                    )
+            else:  # PICKUP
+                # Pickup: no online upload required — pharmacy verifies physical Rx at counter
+                prescription_pending_at_pickup = True
 
         # Verify prescription belongs to this customer if provided
         if prescription_id:
@@ -117,28 +131,44 @@ class OrderService:
             delivery_address=delivery_address,
             contact_phone=contact_phone,
             customer_notes=customer_notes,
-            prescription_id=prescription_id
+            prescription_id=prescription_id,
+            prescription_pending_at_pickup=prescription_pending_at_pickup
         )
 
         db.session.add(order)
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            raise
 
-        # In-app notifications
+        # In-app notifications: secondary operations that should not fail an already committed order
         # 1. Notify pharmacy owner
-        NotificationService.create_notification(
-            user_id=pharmacy.owner_id,
-            title="New Order Received",
-            message=f"New {order_type} order #{order.order_number} for {medicine.name} (Qty: {quantity})",
-            order_id=order.id
-        )
+        try:
+            rx_note = " ⚠️ Prescription required — verify physical Rx before dispensing." if prescription_pending_at_pickup else ""
+            NotificationService.create_notification(
+                user_id=pharmacy.owner_id,
+                title="New Order Received",
+                message=f"New {order_type} order #{order.order_number} for {medicine.name} (Qty: {quantity}).{rx_note}",
+                order_id=order.id
+            )
+        except Exception as notif_err:
+            logger.exception("Failed to dispatch pharmacy notification for order %s: %s", order.id, notif_err)
 
         # 2. Notify customer
-        NotificationService.create_notification(
-            user_id=customer_id,
-            title="Order Placed",
-            message=f"Your {order_type.lower()} order #{order.order_number} has been placed at {pharmacy.name}.",
-            order_id=order.id
-        )
+        try:
+            customer_rx_note = (
+                " Remember to bring your physical prescription when collecting your order."
+                if prescription_pending_at_pickup else ""
+            )
+            NotificationService.create_notification(
+                user_id=customer_id,
+                title="Order Placed",
+                message=f"Your {order_type.lower()} order #{order.order_number} has been placed at {pharmacy.name}.{customer_rx_note}",
+                order_id=order.id
+            )
+        except Exception as notif_err:
+            logger.exception("Failed to dispatch customer notification for order %s: %s", order.id, notif_err)
 
         return order
 
@@ -194,6 +224,61 @@ class OrderService:
         # Sort by distance (nearest first)
         eligible.sort(key=lambda x: x['distance_km'])
         return eligible[0]
+
+    @classmethod
+    def find_eligible_pickup_pharmacies(cls, medicine_id, user_lat=None, user_lon=None, quantity=1):
+        """
+        Store Pickup Pharmacy Listing (customer-choice flow):
+        Returns all active, verified, pickup-enabled pharmacies that have sufficient
+        stock for the requested quantity. Distance is included when coordinates are
+        provided, but the customer is free to choose ANY pharmacy from the list.
+        Never auto-selects or auto-orders.
+        """
+        try:
+            quantity = int(quantity)
+        except (ValueError, TypeError):
+            raise ValueError("Quantity must be a valid integer.")
+        if quantity <= 0:
+            raise ValueError("Quantity must be greater than zero.")
+
+        medicine = db.session.get(Medicine, medicine_id)
+        if not medicine:
+            raise ValueError("Medicine not found.")
+
+        inventories = PharmacyInventory.query.filter(
+            PharmacyInventory.medicine_id == medicine_id,
+            PharmacyInventory.quantity >= quantity
+        ).all()
+
+        eligible = []
+        for inv in inventories:
+            pharmacy = inv.pharmacy
+            if pharmacy and pharmacy.is_active and pharmacy.is_verified and pharmacy.supports_pickup:
+                dist = None
+                if user_lat is not None and user_lon is not None and pharmacy.latitude and pharmacy.longitude:
+                    dist = LocationService.haversine_distance(
+                        float(user_lat), float(user_lon), pharmacy.latitude, pharmacy.longitude
+                    )
+
+                eligible.append({
+                    'pharmacy_id': pharmacy.id,
+                    'pharmacy_name': pharmacy.name,
+                    'address': pharmacy.address,
+                    'city': pharmacy.city,
+                    'pincode': pharmacy.pincode,
+                    'unit_price': inv.price,
+                    'stock_quantity': inv.quantity,
+                    'stock_status': inv.stock_status,
+                    'is_verified': pharmacy.is_verified,
+                    'distance_km': dist,
+                    'distance_text': LocationService.format_distance(dist) if dist is not None else None
+                })
+
+        # Sort by distance when location available; pharmacies without coords go last
+        if user_lat is not None and user_lon is not None:
+            eligible.sort(key=lambda x: (x['distance_km'] is None, x['distance_km'] or 0))
+
+        return eligible
 
     @classmethod
     def find_eligible_delivery_pharmacies(cls, medicine_id, user_lat=None, user_lon=None, quantity=1):
@@ -278,15 +363,22 @@ class OrderService:
                 inv.recalculate_stock_status()
                 inv.last_updated_at = datetime.utcnow()
 
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            raise
 
         # Notify customer
-        status_readable = new_status.replace('_', ' ').title()
-        NotificationService.create_notification(
-            user_id=order.customer_id,
-            title=f"Order Update: {status_readable}",
-            message=f"Your order #{order.order_number} status has been updated to: {status_readable}." + (f" Note: {reason}" if reason else ""),
-            order_id=order.id
-        )
+        try:
+            status_readable = new_status.replace('_', ' ').title()
+            NotificationService.create_notification(
+                user_id=order.customer_id,
+                title=f"Order Update: {status_readable}",
+                message=f"Your order #{order.order_number} status has been updated to: {status_readable}." + (f" Note: {reason}" if reason else ""),
+                order_id=order.id
+            )
+        except Exception as notif_err:
+            logger.exception("Failed to dispatch status update notification for order %s: %s", order.id, notif_err)
 
         return order
