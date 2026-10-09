@@ -1,10 +1,14 @@
 // Navbar management for authentication state & consistent navigation
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // 1. Remove/deactivate the "Find Medicine" nav link per Requirement #5
+    // 1. Ensure "Find Medicine" nav button is visible and navigates properly
     const findMediButtons = document.querySelectorAll('.find-medicine');
     findMediButtons.forEach(btn => {
-        btn.style.display = 'none'; // Hide Find Medicine from normal customer navigation
+        btn.style.display = '';
+        btn.onclick = () => {
+            const targetPage = window.location.pathname.includes('Medifinder') ? 'Medifinder.html' : 'FindMedi.html';
+            window.location.href = targetPage;
+        };
     });
 
     // 2. Check current authentication state

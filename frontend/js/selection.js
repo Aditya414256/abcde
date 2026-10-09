@@ -26,7 +26,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const performSearch = () => {
             const val = pageSearchInput.value.trim();
             if (val) {
-                window.location.href = `FindMedi.html?q=${encodeURIComponent(val)}`;
+                const currentPage = window.location.pathname.includes('Medifinder') ? 'Medifinder.html' : 'FindMedi.html';
+                window.location.href = `${currentPage}?q=${encodeURIComponent(val)}`;
             }
         };
 
@@ -112,7 +113,8 @@ async function searchAndRenderMedicines(query) {
 }
 
 function selectMedicine(id) {
-    window.location.href = `FindMedi.html?medicine_id=${encodeURIComponent(id)}`;
+    const currentPage = window.location.pathname.includes('Medifinder') ? 'Medifinder.html' : 'FindMedi.html';
+    window.location.href = `${currentPage}?medicine_id=${encodeURIComponent(id)}`;
 }
 
 // Load Medicine Selection Flow (Requirement #7: Show Medicine Name + exactly two choices)
