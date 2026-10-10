@@ -214,6 +214,7 @@ class Order(db.Model):
     # True  → customer did NOT upload a digital prescription; pharmacy must verify physical Rx before dispensing.
     # False → no prescription required (OTC), or prescription was uploaded digitally for a delivery order.
     prescription_pending_at_pickup = db.Column(db.Boolean, default=False, nullable=False)
+    idempotency_key = db.Column(db.String(100), unique=True, index=True, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -239,6 +240,7 @@ class Order(db.Model):
             'customer_notes': self.customer_notes,
             'prescription_id': self.prescription_id,
             'prescription_pending_at_pickup': self.prescription_pending_at_pickup,
+            'idempotency_key': self.idempotency_key,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }

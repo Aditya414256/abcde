@@ -4,6 +4,7 @@ from flask_login import login_required, current_user
 from backend.services.order_service import OrderService
 from backend.services.medicine_service import MedicineService
 from backend.models import Order
+from backend.database import db
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +128,7 @@ def create_pickup_order():
     quantity = data.get('quantity', 1)
     customer_notes = data.get('customer_notes')
     prescription_id = data.get('prescription_id')
+    idempotency_key = data.get('idempotency_key')
 
     if not pharmacy_id or not medicine_id:
         return jsonify({'error': 'Pharmacy ID and Medicine ID are required.'}), 400
@@ -139,7 +141,8 @@ def create_pickup_order():
             quantity=quantity,
             order_type='PICKUP',
             customer_notes=customer_notes,
-            prescription_id=prescription_id
+            prescription_id=prescription_id,
+            idempotency_key=idempotency_key
         )
         return jsonify({
             'message': 'Your order has been placed.',
@@ -206,6 +209,7 @@ def create_delivery_order():
     contact_phone = data.get('contact_phone')
     customer_notes = data.get('customer_notes')
     prescription_id = data.get('prescription_id')
+    idempotency_key = data.get('idempotency_key')
 
     if not pharmacy_id or not medicine_id:
         return jsonify({'error': 'Pharmacy ID and Medicine ID are required.'}), 400
@@ -223,7 +227,8 @@ def create_delivery_order():
             delivery_address=delivery_address,
             contact_phone=contact_phone,
             customer_notes=customer_notes,
-            prescription_id=prescription_id
+            prescription_id=prescription_id,
+            idempotency_key=idempotency_key
         )
 
         return jsonify({
@@ -246,6 +251,48 @@ def get_my_orders():
 
     orders = Order.query.filter_by(customer_id=current_user.id).order_by(Order.created_at.desc()).all()
     return jsonify({'orders': [o.to_dict() for o in orders]}), 200
+
+
+@order_bp.route('/<int:order_id>', methods=['GET'])
+def get_order_by_id(order_id):
+    """
+    Retrieve single order by ID for confirmation verification or refresh restoration.
+    Restricted to customer, assigned pharmacy owner, or admin.
+    """
+    if not current_user.is_authenticated:
+        return jsonify({'error': 'Unauthorized. Please login.'}), 401
+
+    order = db.session.get(Order, order_id)
+    if not order:
+        return jsonify({'error': 'Order not found.'}), 404
+
+    is_customer = (order.customer_id == current_user.id)
+    is_pharmacy_owner = (order.pharmacy and order.pharmacy.owner_id == current_user.id)
+    is_admin = (current_user.role == 'admin')
+
+    if not (is_customer or is_pharmacy_owner or is_admin):
+        return jsonify({'error': 'Unauthorized to view this order.'}), 403
+
+    return jsonify({'order': order.to_dict()}), 200
+
+
+@order_bp.route('/by-idempotency/<key>', methods=['GET'])
+def get_order_by_idempotency(key):
+    """
+    Checks if an order with the given idempotency key was already created for current user.
+    Used during network retry, timeout recovery, or refresh during pending submission.
+    """
+    if not current_user.is_authenticated:
+        return jsonify({'error': 'Unauthorized. Please login.'}), 401
+
+    order = Order.query.filter_by(customer_id=current_user.id, idempotency_key=key).first()
+    if not order:
+        return jsonify({'found': False, 'message': 'No order found for this idempotency key.'}), 404
+
+    return jsonify({
+        'found': True,
+        'order': order.to_dict()
+    }), 200
 
 
 @order_bp.route('/<int:order_id>/status', methods=['POST', 'PATCH'])

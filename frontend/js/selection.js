@@ -116,6 +116,7 @@ async function searchAndRenderMedicines(query) {
 }
 
 function selectMedicine(id) {
+    clearPickupSession();
     const currentPage = window.location.pathname.includes('Medifinder') ? 'Medifinder.html' : 'FindMedi.html';
     window.location.href = `${currentPage}?medicine_id=${encodeURIComponent(id)}`;
 }
@@ -206,14 +207,136 @@ async function loadMedicineSelectionFlow(medicineId) {
                     </button>
                 </div>
 
-            </div>
-
-            <!-- DYNAMIC FLOW CONTAINER (MODAL / INLINE STEP) -->
+                      <!-- DYNAMIC FLOW CONTAINER (MODAL / INLINE STEP) -->
             <div id="flow-content-area" style="max-width:720px; margin:0 auto;"></div>
         `;
 
+        // Restore active pickup session if refreshing or returning to this medicine
+        await restorePickupSessionIfAny(parseInt(medicineId, 10));
+
     } catch (err) {
         container.innerHTML = `<div style="padding:40px; text-align:center; color:#ef4444;">Error loading medicine: ${escapeHtml(err.message)}</div>`;
+    }
+}
+
+// ==========================================
+// STORE PICKUP SESSION PERSISTENCE HELPERS
+// ==========================================
+const PICKUP_SESSION_KEY = 'medifind_pickup_session';
+
+function getPickupSession() {
+    try {
+        const raw = sessionStorage.getItem(PICKUP_SESSION_KEY);
+        return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function savePickupSession(state) {
+    try {
+        if (!state) {
+            sessionStorage.removeItem(PICKUP_SESSION_KEY);
+            return;
+        }
+        const existing = getPickupSession() || {};
+        const merged = Object.assign({}, existing, state);
+        sessionStorage.setItem(PICKUP_SESSION_KEY, JSON.stringify(merged));
+    } catch (e) {
+        console.warn('Could not save pickup session state:', e);
+    }
+}
+
+function clearPickupSession() {
+    try {
+        sessionStorage.removeItem(PICKUP_SESSION_KEY);
+    } catch (e) {}
+}
+
+function generateIdempotencyKey() {
+    return 'mf_pickup_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+// Restores pickup progress after browser refresh
+async function restorePickupSessionIfAny(medicineId) {
+    const session = getPickupSession();
+    if (!session || session.medicineId !== medicineId) return;
+
+    const flowArea = document.getElementById('flow-content-area');
+    if (!flowArea) return;
+
+    // Verify authentication before restoring sensitive stages
+    const auth = await API.getCurrentUser().catch(() => null);
+    if (!auth || !auth.authenticated) {
+        clearPickupSession();
+        return;
+    }
+
+    // Step: Order Placed — Retrieve confirmed order from backend database
+    if (session.step === 'ORDER_CONFIRMED' && session.orderId) {
+        flowArea.innerHTML = `
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:30px; text-align:center; font-family:'Plus Jakarta Sans',sans-serif; color:#64748b;">
+                Restoring your order confirmation from server…
+            </div>
+        `;
+        try {
+            const res = await API.get(`/api/orders/${session.orderId}`);
+            if (res && res.order) {
+                renderPickupOrderConfirmation(res.order);
+                return;
+            }
+        } catch (e) {
+            console.warn('Could not retrieve order by ID:', e);
+            clearPickupSession();
+        }
+        return;
+    }
+
+    // Step: Confirmation form (reviewing store selection)
+    if (session.step === 'CONFIRMATION' && session.pharmacyId) {
+        // If request was in flight during refresh, check whether order was already created
+        if (session.pendingSubmission && session.idempotencyKey) {
+            try {
+                const checkRes = await API.get(`/api/orders/by-idempotency/${encodeURIComponent(session.idempotencyKey)}`);
+                if (checkRes && checkRes.found && checkRes.order) {
+                    savePickupSession({
+                        step: 'ORDER_CONFIRMED',
+                        medicineId: medicineId,
+                        orderId: checkRes.order.id,
+                        orderNumber: checkRes.order.order_number,
+                        pendingSubmission: false
+                    });
+                    renderPickupOrderConfirmation(checkRes.order);
+                    return;
+                }
+            } catch (e) {}
+            session.pendingSubmission = false;
+            savePickupSession(session);
+        }
+
+        showPickupConfirmation(
+            session.medicineId,
+            session.pharmacyId,
+            session.pharmacyName,
+            session.pharmacyAddress,
+            session.unitPrice,
+            session.userLat !== undefined ? session.userLat : null,
+            session.userLon !== undefined ? session.userLon : null,
+            session.requiresPrescription,
+            session.quantity || 1,
+            session.notes || ''
+        );
+        return;
+    }
+
+    // Step: Store list (selecting a pharmacy)
+    if (session.step === 'STORE_LIST') {
+        await loadPickupPharmacyList(
+            medicineId,
+            session.userLat !== undefined ? session.userLat : null,
+            session.userLon !== undefined ? session.userLon : null,
+            session.quantity || 1
+        );
     }
 }
 
@@ -251,15 +374,22 @@ async function handleStorePickup(medicineId) {
     if (navigator.geolocation) {
         try {
             const pos = await new Promise((resolve, reject) => {
-                navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+                navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 4000 });
             });
             userLat = pos.coords.latitude;
             userLon = pos.coords.longitude;
         } catch (e) {
-            // Location denied or unavailable — continue without it
             console.log('Location not granted for pickup listing; showing without distance sort.');
         }
     }
+
+    savePickupSession({
+        step: 'STORE_LIST',
+        medicineId: parseInt(medicineId, 10),
+        userLat: userLat,
+        userLon: userLon,
+        quantity: 1
+    });
 
     await loadPickupPharmacyList(medicineId, userLat, userLon, 1);
 }
@@ -270,6 +400,14 @@ async function loadPickupPharmacyList(medicineId, userLat, userLon, quantity) {
 
     const requiresPrescription = _currentMedicineRequiresPrescription;
 
+    savePickupSession({
+        step: 'STORE_LIST',
+        medicineId: parseInt(medicineId, 10),
+        userLat: userLat !== undefined ? userLat : null,
+        userLon: userLon !== undefined ? userLon : null,
+        quantity: quantity || 1
+    });
+
     flowArea.innerHTML = `
         <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:30px; text-align:center; font-family:'Plus Jakarta Sans',sans-serif; color:#64748b;">
             Searching eligible pickup stores…
@@ -277,8 +415,8 @@ async function loadPickupPharmacyList(medicineId, userLat, userLon, quantity) {
     `;
 
     try {
-        let url = `/api/orders/pickup-pharmacies?medicine_id=${medicineId}&quantity=${quantity}`;
-        if (userLat !== null && userLon !== null) {
+        let url = `/api/orders/pickup-pharmacies?medicine_id=${medicineId}&quantity=${quantity || 1}`;
+        if (userLat !== null && userLon !== null && userLat !== undefined && userLon !== undefined) {
             url += `&latitude=${userLat}&longitude=${userLon}`;
         }
 
@@ -302,7 +440,7 @@ async function loadPickupPharmacyList(medicineId, userLat, userLon, quantity) {
             return;
         }
 
-        const locationNote = userLat !== null
+        const locationNote = (userLat !== null && userLat !== undefined)
             ? '<span style="color:#059669; font-size:0.8rem;">📍 Sorted by nearest first</span>'
             : '<span style="color:#94a3b8; font-size:0.8rem;">Enable location for distance sorting</span>';
 
@@ -367,7 +505,7 @@ async function loadPickupPharmacyList(medicineId, userLat, userLon, quantity) {
                                     class="search-button"
                                     style="width:100%; padding:10px;"
                                     id="select-store-btn-${p.pharmacy_id}"
-                                    onclick="showPickupConfirmation(${medicineId}, ${p.pharmacy_id}, '${escapeHtml(p.pharmacy_name).replace(/'/g, "\\'")}',' ${escapeHtml(p.address + ', ' + p.city).replace(/'/g, "\\'")}'  , ${p.unit_price}, ${userLat !== null ? userLat : 'null'}, ${userLon !== null ? userLon : 'null'}, ${requiresPrescription})"
+                                    onclick="showPickupConfirmation(${medicineId}, ${p.pharmacy_id}, '${escapeHtml(p.pharmacy_name).replace(/'/g, "\\'")}', '${escapeHtml(p.address + ', ' + p.city).replace(/'/g, "\\'")}', ${p.unit_price}, ${userLat !== null && userLat !== undefined ? userLat : 'null'}, ${userLon !== null && userLon !== undefined ? userLon : 'null'}, ${requiresPrescription}, ${quantity || 1})"
                                 >
                                     Select This Store
                                 </button>
@@ -389,13 +527,46 @@ async function loadPickupPharmacyList(medicineId, userLat, userLon, quantity) {
     }
 }
 
+window.onChangeStoreClicked = function(medicineId, userLat, userLon) {
+    savePickupSession({
+        step: 'STORE_LIST',
+        medicineId: parseInt(medicineId, 10),
+        userLat: userLat !== undefined ? userLat : null,
+        userLon: userLon !== undefined ? userLon : null,
+        quantity: 1
+    });
+    loadPickupPharmacyList(medicineId, userLat, userLon, 1);
+};
+
 // Step 2: Review & confirm — shown after customer taps "Select This Store"
-window.showPickupConfirmation = function(medicineId, pharmacyId, pharmacyName, pharmacyAddress, unitPrice, userLat, userLon) {
+window.showPickupConfirmation = function(medicineId, pharmacyId, pharmacyName, pharmacyAddress, unitPrice, userLat, userLon, requiresPrescription, quantity, savedNotes) {
     const flowArea = document.getElementById('flow-content-area');
     if (!flowArea) return;
 
-    const quantity = 1; // default; could be a form input
-    const total = (unitPrice * quantity).toFixed(2);
+    const qty = quantity ? parseInt(quantity, 10) : 1;
+    const price = parseFloat(unitPrice) || 0;
+    const total = (price * qty).toFixed(2);
+    const existingSession = getPickupSession() || {};
+    const notesValue = savedNotes !== undefined ? savedNotes : (existingSession.notes || '');
+
+    // Reuse existing idempotency key or generate a fresh one
+    const idempotencyKey = existingSession.idempotencyKey || generateIdempotencyKey();
+
+    savePickupSession({
+        step: 'CONFIRMATION',
+        medicineId: parseInt(medicineId, 10),
+        pharmacyId: parseInt(pharmacyId, 10),
+        pharmacyName: pharmacyName,
+        pharmacyAddress: pharmacyAddress,
+        unitPrice: price,
+        quantity: qty,
+        userLat: userLat !== undefined ? userLat : null,
+        userLon: userLon !== undefined ? userLon : null,
+        requiresPrescription: !!requiresPrescription,
+        notes: notesValue,
+        idempotencyKey: idempotencyKey,
+        pendingSubmission: false
+    });
 
     flowArea.innerHTML = `
         <div style="background:#ffffff; border:1.5px solid #0284c7; border-radius:16px; padding:28px 24px; font-family:'Plus Jakarta Sans',sans-serif;">
@@ -406,7 +577,7 @@ window.showPickupConfirmation = function(medicineId, pharmacyId, pharmacyName, p
                     <div style="font-size:0.82rem; color:#64748b; margin-top:2px;">${escapeHtml(pharmacyAddress)}</div>
                 </div>
                 <button
-                    onclick="loadPickupPharmacyList(${medicineId}, ${userLat !== null ? userLat : 'null'}, ${userLon !== null ? userLon : 'null'}, 1)"
+                    onclick="onChangeStoreClicked(${medicineId}, ${userLat !== null && userLat !== undefined ? userLat : 'null'}, ${userLon !== null && userLon !== undefined ? userLon : 'null'})"
                     style="background:transparent; border:none; color:#0284c7; font-weight:600; cursor:pointer; font-size:0.85rem; white-space:nowrap;"
                 >
                     ← Change Store
@@ -421,10 +592,10 @@ window.showPickupConfirmation = function(medicineId, pharmacyId, pharmacyName, p
                     <strong style="color:#0f172a;">Address:</strong> ${escapeHtml(pharmacyAddress)}
                 </div>
                 <div style="font-size:0.88rem; color:#475569; margin-bottom:8px;">
-                    <strong style="color:#0f172a;">Quantity:</strong> ${quantity}
+                    <strong style="color:#0f172a;">Quantity:</strong> ${qty}
                 </div>
                 <div style="font-size:0.88rem; color:#475569; margin-bottom:8px;">
-                    <strong style="color:#0f172a;">Unit Price:</strong> ₹${unitPrice.toFixed(2)}
+                    <strong style="color:#0f172a;">Unit Price:</strong> ₹${price.toFixed(2)}
                 </div>
                 <div style="font-size:1rem; color:#0f172a; font-weight:700; border-top:1px dashed #e2e8f0; padding-top:10px; margin-top:10px;">
                     Total: ₹${total}
@@ -442,12 +613,25 @@ window.showPickupConfirmation = function(medicineId, pharmacyId, pharmacyName, p
                 class="search-button"
                 style="width:100%; padding:13px;"
                 id="confirm-pickup-btn"
-                onclick="confirmPickupOrder(${medicineId}, ${pharmacyId}, ${quantity})"
+                onclick="confirmPickupOrder(${medicineId}, ${pharmacyId}, ${qty})"
             >
                 Confirm & Place Pickup Order
             </button>
         </div>
     `;
+
+    // Restore any previously typed notes and attach real-time persistence
+    const notesInput = document.getElementById('pickup-notes');
+    if (notesInput) {
+        notesInput.value = notesValue;
+        notesInput.addEventListener('input', (e) => {
+            const s = getPickupSession();
+            if (s) {
+                s.notes = e.target.value;
+                savePickupSession(s);
+            }
+        });
+    }
 };
 
 let _pickupSubmitting = false;
@@ -458,71 +642,152 @@ window.confirmPickupOrder = async function(medicineId, pharmacyId, quantity) {
 
     const btn = document.getElementById('confirm-pickup-btn');
     const errBox = document.getElementById('pickup-error-box');
-    const notes = (document.getElementById('pickup-notes') || {}).value || '';
+    const notesEl = document.getElementById('pickup-notes');
+    const notes = (notesEl ? notesEl.value.trim() : '') || '';
 
-    if (btn) { btn.disabled = true; btn.textContent = 'Placing Order…'; }
+    if (btn) {
+        btn.disabled = true;
+        btn.style.pointerEvents = 'none';
+        btn.textContent = 'Placing Order…';
+    }
     if (errBox) errBox.style.display = 'none';
+
+    let session = getPickupSession() || {};
+    if (!session.idempotencyKey) {
+        session.idempotencyKey = generateIdempotencyKey();
+    }
+    session.pendingSubmission = true;
+    session.notes = notes;
+    savePickupSession(session);
 
     try {
         const res = await API.post('/api/orders/pickup', {
             pharmacy_id: pharmacyId,
             medicine_id: medicineId,
             quantity: quantity,
-            customer_notes: notes || undefined
+            customer_notes: notes || undefined,
+            idempotency_key: session.idempotencyKey
         });
 
+        // Verification: ensure the response matches a valid, successfully saved order
+        if (!res || !res.order || !res.order.id || !res.order.order_number) {
+            throw new Error('Order creation could not be verified by server response.');
+        }
+
         const order = res.order;
-        const flowArea = document.getElementById('flow-content-area');
-        if (!flowArea) return;
 
-        flowArea.innerHTML = `
-            <div style="background:#ffffff; border:2px solid #059669; border-radius:16px; padding:35px 28px; text-align:center; font-family:'Plus Jakarta Sans',sans-serif; box-shadow:0 10px 25px rgba(5,150,105,0.1);">
-                <div style="width:56px; height:56px; border-radius:50%; background:#d1fae5; color:#059669; display:flex; align-items:center; justify-content:center; font-size:1.8rem; margin:0 auto 16px;">
-                    ✓
-                </div>
-                <h2 style="font-family:'Space Grotesk',sans-serif; color:#0f172a; margin:0 0 6px;">
-                    Your order has been placed.
-                </h2>
-                <p style="color:#059669; font-weight:600; font-size:0.95rem; margin:0 0 24px;">
-                    Store Pickup Order #${escapeHtml(order.order_number)}
-                </p>
+        // Persist submitted order state so browser refresh restores this exact confirmation
+        savePickupSession({
+            step: 'ORDER_CONFIRMED',
+            medicineId: parseInt(medicineId, 10),
+            orderId: order.id,
+            orderNumber: order.order_number,
+            pharmacyId: pharmacyId,
+            pendingSubmission: false
+        });
 
-                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:20px; text-align:left; margin-bottom:24px;">
-                    <div style="font-size:0.9rem; color:#475569; margin-bottom:8px;">
-                        <strong>Pickup From:</strong> ${escapeHtml(order.pharmacy_name)}
-                    </div>
-                    <div style="font-size:0.9rem; color:#475569; margin-bottom:8px;">
-                        <strong>Medicine:</strong> ${escapeHtml(order.medicine_name)} (Qty: ${order.quantity})
-                    </div>
-                    <div style="font-size:0.9rem; color:#475569; margin-bottom:8px;">
-                        <strong>Total Amount:</strong> ₹${order.total_amount.toFixed(2)}
-                    </div>
-                    <div style="font-size:0.9rem; color:#059669; font-weight:600;">
-                        <strong>Status:</strong> ${escapeHtml(order.status)}
-                    </div>
-                </div>
-
-                <button class="search-button" style="padding:10px 24px;" onclick="window.location.href='HomePage.html'">
-                    Back to Home
-                </button>
-            </div>
-        `;
+        renderPickupOrderConfirmation(order);
 
     } catch (err) {
+        // If a network timeout or glitch occurred, check if server created order before showing error
+        if (session.idempotencyKey) {
+            try {
+                const checkRes = await API.get(`/api/orders/by-idempotency/${encodeURIComponent(session.idempotencyKey)}`);
+                if (checkRes && checkRes.found && checkRes.order) {
+                    savePickupSession({
+                        step: 'ORDER_CONFIRMED',
+                        medicineId: parseInt(medicineId, 10),
+                        orderId: checkRes.order.id,
+                        orderNumber: checkRes.order.order_number,
+                        pharmacyId: pharmacyId,
+                        pendingSubmission: false
+                    });
+                    renderPickupOrderConfirmation(checkRes.order);
+                    return;
+                }
+            } catch (checkErr) {
+                // Ignore checkErr, proceed with error handling
+            }
+        }
+
+        session.pendingSubmission = false;
+        savePickupSession(session);
+
+        if (err.status === 401 || (err.data && err.data.require_login)) {
+            const flowArea = document.getElementById('flow-content-area');
+            if (flowArea) {
+                renderAuthRequiredNotice(flowArea, 'Store Pickup');
+            }
+            return;
+        }
+
         if (errBox) {
             errBox.textContent = err.message || 'Failed to place order. Please try again.';
             errBox.style.display = 'block';
         }
-        if (btn) { btn.disabled = false; btn.textContent = 'Confirm & Place Pickup Order'; }
+        if (btn) {
+            btn.disabled = false;
+            btn.style.pointerEvents = 'auto';
+            btn.textContent = 'Confirm & Place Pickup Order';
+        }
     } finally {
         _pickupSubmitting = false;
     }
 };
 
+function renderPickupOrderConfirmation(order) {
+    const flowArea = document.getElementById('flow-content-area');
+    if (!flowArea) return;
+
+    const rxNotice = order.prescription_pending_at_pickup
+        ? `<div style="background:#fffbeb; border:1px solid #fde68a; border-radius:12px; padding:12px 16px; margin-bottom:20px; font-size:0.88rem; color:#78350f; text-align:left; line-height:1.5;">
+            <strong>📋 Prescription Notice:</strong> This medicine requires a valid prescription. Please bring your <strong>physical prescription</strong> when picking up this order at the pharmacy. The pharmacy will verify it before dispensing.
+           </div>`
+        : '';
+
+    flowArea.innerHTML = `
+        <div style="background:#ffffff; border:2px solid #059669; border-radius:16px; padding:35px 28px; text-align:center; font-family:'Plus Jakarta Sans',sans-serif; box-shadow:0 10px 25px rgba(5,150,105,0.1);">
+            <div style="width:56px; height:56px; border-radius:50%; background:#d1fae5; color:#059669; display:flex; align-items:center; justify-content:center; font-size:1.8rem; margin:0 auto 16px;">
+                ✓
+            </div>
+            <h2 style="font-family:'Space Grotesk',sans-serif; color:#0f172a; margin:0 0 6px;">
+                Your order has been placed.
+            </h2>
+            <p style="color:#059669; font-weight:600; font-size:0.95rem; margin:0 0 24px;">
+                Store Pickup Order #${escapeHtml(order.order_number)}
+            </p>
+
+            ${rxNotice}
+
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:20px; text-align:left; margin-bottom:24px;">
+                <div style="font-size:0.9rem; color:#475569; margin-bottom:8px;">
+                    <strong>Pickup From:</strong> ${escapeHtml(order.pharmacy_name || '')}
+                </div>
+                <div style="font-size:0.9rem; color:#475569; margin-bottom:8px;">
+                    <strong>Medicine:</strong> ${escapeHtml(order.medicine_name || '')} (Qty: ${order.quantity})
+                </div>
+                <div style="font-size:0.9rem; color:#475569; margin-bottom:8px;">
+                    <strong>Total Amount:</strong> ₹${parseFloat(order.total_amount || 0).toFixed(2)}
+                </div>
+                <div style="font-size:0.9rem; color:#059669; font-weight:600;">
+                    <strong>Status:</strong> ${escapeHtml(order.status)}
+                </div>
+            </div>
+
+            <div style="display:flex; justify-content:center; gap:12px;">
+                <button class="search-button" style="padding:10px 24px;" onclick="clearPickupSession(); window.location.href='HomePage.html'">
+                    Back to Home
+                </button>
+            </div>
+        </div>
+    `;
+}
+
 // ==========================================
 // DELIVERY FLOW (Requirements #12, 13)
 // ==========================================
 async function handleDeliveryChoice(medicineId) {
+    clearPickupSession();
     const flowArea = document.getElementById('flow-content-area');
     if (!flowArea) return;
 

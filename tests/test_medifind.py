@@ -778,3 +778,192 @@ def test_order_rollback_on_database_commit_failure(app, monkeypatch):
         db.session.rollback()
         db.session.refresh(inv)
         assert inv.quantity == initial_stock
+
+
+# ==========================================
+# 16. Pickup Order Flow, Idempotency & Refresh Persistence Tests
+# ==========================================
+def test_pickup_order_with_idempotency_prevents_duplicates(app, client):
+    """Submitting pickup order with same idempotency key does not create duplicates or decrement stock twice."""
+    client.post('/api/auth/login', json={'email': 'customer@example.com', 'password': 'customer123'})
+
+    with app.app_context():
+        pharmacy = Pharmacy.query.filter_by(supports_pickup=True, is_active=True, is_verified=True).first()
+        inv = PharmacyInventory.query.filter_by(pharmacy_id=pharmacy.id).first()
+        medicine_id = inv.medicine_id
+        initial_stock = inv.quantity
+
+    payload = {
+        'pharmacy_id': pharmacy.id,
+        'medicine_id': medicine_id,
+        'quantity': 2,
+        'customer_notes': 'Please keep ready by 5pm',
+        'idempotency_key': 'test-idemp-pickup-001'
+    }
+
+    # First submission
+    res1 = client.post('/api/orders/pickup', json=payload)
+    assert res1.status_code == 201
+    data1 = res1.get_json()
+    order1 = data1['order']
+    assert order1['order_number'].startswith('MF-')
+    assert order1['quantity'] == 2
+    assert order1['idempotency_key'] == 'test-idemp-pickup-001'
+
+    # Check stock after first submission
+    with app.app_context():
+        inv_after1 = PharmacyInventory.query.filter_by(pharmacy_id=pharmacy.id, medicine_id=medicine_id).first()
+        assert inv_after1.quantity == initial_stock - 2
+
+    # Second submission with identical idempotency key (simulating double click, retry, or refresh)
+    res2 = client.post('/api/orders/pickup', json=payload)
+    assert res2.status_code in [200, 201]
+    data2 = res2.get_json()
+    order2 = data2['order']
+
+    # Both must refer to the exact same order
+    assert order2['id'] == order1['id']
+    assert order2['order_number'] == order1['order_number']
+
+    # Stock must NOT have been decremented a second time
+    with app.app_context():
+        inv_after2 = PharmacyInventory.query.filter_by(pharmacy_id=pharmacy.id, medicine_id=medicine_id).first()
+        assert inv_after2.quantity == initial_stock - 2
+        # Only one order in database with this key
+        orders_matching = Order.query.filter_by(idempotency_key='test-idemp-pickup-001').all()
+        assert len(orders_matching) == 1
+
+
+def test_get_order_by_id_and_ownership_security(app, client):
+    """GET /api/orders/<id> retrieves saved order for owner and blocks unauthorized users."""
+    client.post('/api/auth/login', json={'email': 'customer@example.com', 'password': 'customer123'})
+
+    with app.app_context():
+        pharmacy = Pharmacy.query.filter_by(supports_pickup=True, is_active=True, is_verified=True).first()
+        inv = PharmacyInventory.query.filter_by(pharmacy_id=pharmacy.id).first()
+
+    res = client.post('/api/orders/pickup', json={
+        'pharmacy_id': pharmacy.id,
+        'medicine_id': inv.medicine_id,
+        'quantity': 1,
+        'idempotency_key': 'auth-check-key-1'
+    })
+    assert res.status_code == 201
+    order_id = res.get_json()['order']['id']
+
+    # Authorized customer fetches order (as happens on browser refresh)
+    get_res = client.get(f'/api/orders/{order_id}')
+    assert get_res.status_code == 200
+    fetched_order = get_res.get_json()['order']
+    assert fetched_order['id'] == order_id
+    assert fetched_order['pharmacy_name'] == pharmacy.name
+
+    # Create and login as a second customer
+    client.post('/api/auth/logout')
+    with app.app_context():
+        other_user = User(email='other@customer.com', full_name='Other Person', role='customer')
+        other_user.set_password('pass123')
+        db.session.add(other_user)
+        db.session.commit()
+
+    client.post('/api/auth/login', json={'email': 'other@customer.com', 'password': 'pass123'})
+
+    # Second customer should NOT be allowed to view first customer's order
+    forbidden_res = client.get(f'/api/orders/{order_id}')
+    assert forbidden_res.status_code == 403
+
+
+def test_get_order_by_idempotency_recovery(app, client):
+    """GET /api/orders/by-idempotency/<key> allows frontend to recover orders if refresh or timeout occurs."""
+    client.post('/api/auth/login', json={'email': 'customer@example.com', 'password': 'customer123'})
+
+    # Non-existent key returns 404
+    missing_res = client.get('/api/orders/by-idempotency/nonexistent-key-999')
+    assert missing_res.status_code == 404
+    assert missing_res.get_json()['found'] is False
+
+    with app.app_context():
+        pharmacy = Pharmacy.query.filter_by(supports_pickup=True, is_active=True, is_verified=True).first()
+        inv = PharmacyInventory.query.filter_by(pharmacy_id=pharmacy.id).first()
+
+    key = 'recovery-key-xyz'
+    client.post('/api/orders/pickup', json={
+        'pharmacy_id': pharmacy.id,
+        'medicine_id': inv.medicine_id,
+        'quantity': 1,
+        'idempotency_key': key
+    })
+
+    found_res = client.get(f'/api/orders/by-idempotency/{key}')
+    assert found_res.status_code == 200
+    data = found_res.get_json()
+    assert data['found'] is True
+    assert data['order']['idempotency_key'] == key
+
+
+def test_pickup_validation_failure_shows_error_and_preserves_stock(app, client):
+    """Invalid pickup order returns error and does NOT create order or decrement inventory."""
+    client.post('/api/auth/login', json={'email': 'customer@example.com', 'password': 'customer123'})
+
+    with app.app_context():
+        pharmacy = Pharmacy.query.filter_by(supports_pickup=True, is_active=True, is_verified=True).first()
+        inv = PharmacyInventory.query.filter_by(pharmacy_id=pharmacy.id).first()
+        initial_stock = inv.quantity
+
+    # Attempt order with quantity greater than available stock
+    res = client.post('/api/orders/pickup', json={
+        'pharmacy_id': pharmacy.id,
+        'medicine_id': inv.medicine_id,
+        'quantity': initial_stock + 100
+    })
+
+    assert res.status_code == 400
+    data = res.get_json()
+    assert 'Insufficient stock' in data['error']
+
+    with app.app_context():
+        inv_check = PharmacyInventory.query.filter_by(pharmacy_id=pharmacy.id, medicine_id=inv.medicine_id).first()
+        assert inv_check.quantity == initial_stock
+
+
+def test_customer_and_pharmacy_status_consistency(app, client):
+    """Customer and pharmacy dashboards see consistent order records and status updates."""
+    # 1. Customer places pickup order
+    client.post('/api/auth/login', json={'email': 'customer@example.com', 'password': 'customer123'})
+
+    with app.app_context():
+        pharmacy = Pharmacy.query.filter_by(supports_pickup=True, is_active=True, is_verified=True).first()
+        inv = PharmacyInventory.query.filter_by(pharmacy_id=pharmacy.id).first()
+        owner = User.query.get(pharmacy.owner_id)
+
+    res = client.post('/api/orders/pickup', json={
+        'pharmacy_id': pharmacy.id,
+        'medicine_id': inv.medicine_id,
+        'quantity': 1
+    })
+    assert res.status_code == 201
+    order_id = res.get_json()['order']['id']
+
+    # 2. Pharmacy owner logs in and views order in their portal
+    client.post('/api/auth/logout')
+    client.post('/api/auth/login', json={'email': owner.email, 'password': 'pharmacy123'})
+
+    pharmacy_orders_res = client.get('/api/pharmacy/orders')
+    assert pharmacy_orders_res.status_code == 200
+    pharm_orders = pharmacy_orders_res.get_json()['orders']
+    matching_order = next((o for o in pharm_orders if o['id'] == order_id), None)
+    assert matching_order is not None
+    assert matching_order['status'] == 'PENDING'
+
+    # Pharmacy updates status
+    status_update_res = client.post(f'/api/orders/{order_id}/status', json={'status': 'ACCEPTED'})
+    assert status_update_res.status_code == 200
+
+    # 3. Customer logs back in and checks their order (e.g. on confirmation refresh or My Orders)
+    client.post('/api/auth/logout')
+    client.post('/api/auth/login', json={'email': 'customer@example.com', 'password': 'customer123'})
+
+    cust_check_res = client.get(f'/api/orders/{order_id}')
+    assert cust_check_res.status_code == 200
+    assert cust_check_res.get_json()['order']['status'] == 'ACCEPTED'
+

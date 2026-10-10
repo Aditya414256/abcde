@@ -31,11 +31,20 @@ class OrderService:
     @classmethod
     def create_order(cls, customer_id, pharmacy_id, medicine_id, quantity, order_type,
                      delivery_address=None, contact_phone=None, customer_notes=None,
-                     prescription_id=None):
+                     prescription_id=None, idempotency_key=None):
         """
         Creates an order with comprehensive server-side validations,
-        transactional inventory check & decrement, and in-app notifications.
+        transactional inventory check & decrement, idempotency duplicate prevention,
+        and in-app notifications.
         """
+        # Idempotency check before doing any checks or inventory mutation
+        if idempotency_key:
+            existing_order = Order.query.filter_by(idempotency_key=idempotency_key).first()
+            if existing_order:
+                logger.info("Returning existing order %s for idempotency key %s",
+                            existing_order.order_number, idempotency_key)
+                return existing_order
+
         # Validate order type
         if order_type not in ['PICKUP', 'DELIVERY']:
             raise ValueError("Invalid order type. Must be PICKUP or DELIVERY.")
@@ -132,7 +141,8 @@ class OrderService:
             contact_phone=contact_phone,
             customer_notes=customer_notes,
             prescription_id=prescription_id,
-            prescription_pending_at_pickup=prescription_pending_at_pickup
+            prescription_pending_at_pickup=prescription_pending_at_pickup,
+            idempotency_key=idempotency_key
         )
 
         db.session.add(order)
@@ -140,6 +150,10 @@ class OrderService:
             db.session.commit()
         except Exception:
             db.session.rollback()
+            if idempotency_key:
+                existing_order = Order.query.filter_by(idempotency_key=idempotency_key).first()
+                if existing_order:
+                    return existing_order
             raise
 
         # In-app notifications: secondary operations that should not fail an already committed order

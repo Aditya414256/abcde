@@ -14,6 +14,9 @@ def ensure_schema_migrations():
             if 'prescription_pending_at_pickup' not in order_cols:
                 with db.engine.begin() as conn:
                     conn.execute(text("ALTER TABLE orders ADD COLUMN prescription_pending_at_pickup BOOLEAN NOT NULL DEFAULT 0"))
+            if 'idempotency_key' not in order_cols:
+                with db.engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE orders ADD COLUMN idempotency_key VARCHAR(100)"))
     except Exception as e:
         print(f"Schema migration note: {e}")
 
