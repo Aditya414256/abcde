@@ -128,7 +128,7 @@ def register_pharmacy():
 def login():
     data = request.get_json(silent=True) or request.form or {}
     email = (data.get('email') or '').strip().lower()
-    password = data.get('password') or 
+    password = data.get('password') or ''
 
     if not email or not password:
         return jsonify({'error': 'Email and password are required.'}), 400
