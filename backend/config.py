@@ -32,6 +32,9 @@ class Config:
     _raw_db_url = os.environ.get('DATABASE_URL')
     if _raw_db_url:
         SQLALCHEMY_DATABASE_URI = normalize_database_url(_raw_db_url)
+    elif os.environ.get('VERCEL'):
+        # On Vercel without DATABASE_URL, fallback to writable /tmp for SQLite
+        SQLALCHEMY_DATABASE_URI = 'sqlite:////tmp/medifind.db'
     else:
         SQLALCHEMY_DATABASE_URI = f"sqlite:///{os.path.join(BASE_DIR, 'medifind.db')}"
 

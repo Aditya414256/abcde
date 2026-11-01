@@ -17,8 +17,18 @@ def create_app(config_class=Config):
     Migrate(app, db)
 
     with app.app_context():
-        from backend.seed import ensure_schema_migrations
-        ensure_schema_migrations()
+        try:
+            if db.engine.dialect.name == 'sqlite':
+                db.create_all()
+                from backend.seed import ensure_schema_migrations, seed_database
+                ensure_schema_migrations()
+                if not User.query.first():
+                    seed_database(app)
+            else:
+                from backend.seed import ensure_schema_migrations
+                ensure_schema_migrations()
+        except Exception as err:
+            app.logger.warning('Startup schema note: %s', err)
 
     login_manager = LoginManager()
     login_manager.init_app(app)
@@ -64,6 +74,7 @@ def create_app(config_class=Config):
 
     @app.errorhandler(500)
     def server_error(e):
-        return jsonify({'error': 'Internal server error'}), 500
+        app.logger.error('Unhandled Server Error: %s', e, exc_info=True)
+        return jsonify({'error': 'Internal server error', 'message': str(e)}), 500
 
     return app
