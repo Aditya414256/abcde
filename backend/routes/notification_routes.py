@@ -4,9 +4,11 @@ from flask_login import login_required, current_user
 from backend.services.notification_service import NotificationService
 from backend.services.prescription_service import PrescriptionService
 from backend.models import Prescription
+from backend.database import db
 from backend.config import Config
 
 common_bp = Blueprint('common', __name__, url_prefix='/api')
+
 
 @common_bp.route('/notifications', methods=['GET'])
 def get_notifications():
@@ -42,15 +44,15 @@ def upload_prescription():
         prescription = PrescriptionService.save_prescription(
             customer_id=current_user.id,
             file_storage=file,
-            pharmacy_id=pharmacy_id
+            pharmacy_id=pharmacy_id,
         )
         return jsonify({
             'message': 'Prescription uploaded successfully.',
-            'prescription': prescription.to_dict()
+            'prescription': prescription.to_dict(),
         }), 201
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
-    except Exception as e:
+    except Exception:
         return jsonify({'error': 'Failed to save prescription file.'}), 500
 
 
@@ -58,12 +60,12 @@ def upload_prescription():
 def get_prescription_file(prescription_id):
     """
     Secure file retrieval: Authorization required.
-    Ensures prescription files are NOT publicly accessible.
+    Prescription files are never publicly accessible — always checked here.
     """
     if not current_user.is_authenticated:
         return jsonify({'error': 'Unauthorized.'}), 401
 
-    prescription = Prescription.query.get(prescription_id)
+    prescription = db.session.get(Prescription, prescription_id)
     if not prescription:
         return jsonify({'error': 'Prescription not found.'}), 404
 

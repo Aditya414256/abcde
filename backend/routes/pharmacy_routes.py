@@ -8,15 +8,18 @@ from backend.database import db
 
 pharmacy_bp = Blueprint('pharmacy', __name__, url_prefix='/api')
 
+
 @pharmacy_bp.route('/pharmacies', methods=['GET'])
-def list_verified_pharmacies():
+def list_pharmacies():
     """
-    Public customer locator: lists ONLY active and admin-verified pharmacies.
+    Public pharmacy directory: lists ALL active pharmacies regardless of
+    verification status. is_active and is_verified are distinct flags.
+    Active pharmacies with pending verification or no inventory are still listed.
     Optionally calculates distance if user provides latitude and longitude.
     """
     lat = request.args.get('latitude', type=float)
     lon = request.args.get('longitude', type=float)
-    pharmacies = PharmacyService.list_verified_pharmacies(user_lat=lat, user_lon=lon)
+    pharmacies = PharmacyService.list_active_pharmacies(user_lat=lat, user_lon=lon)
     return jsonify({
         'count': len(pharmacies),
         'pharmacies': pharmacies
@@ -103,12 +106,13 @@ def manage_inventory():
 def review_prescription(prescription_id):
     """
     Manual human review of uploaded prescription by pharmacy owner.
+    Approval / rejection is separate from order acceptance.
     """
     if not current_user.is_authenticated or current_user.role != 'pharmacy':
         return jsonify({'error': 'Unauthorized.'}), 403
 
     data = request.get_json() or {}
-    status = data.get('status') # 'APPROVED' or 'REJECTED'
+    status = data.get('status')  # 'APPROVED' or 'REJECTED'
     notes = data.get('notes')
 
     try:

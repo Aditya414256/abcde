@@ -1,0 +1,32 @@
+# MediFind — Python Dependencies
+# Install with: pip install -r requirements.txt
+
+# ─── Core Framework ──────────────────────────────────────────────────────────
+Flask>=3.1.0,<4.0
+Flask-Login>=0.6.3,<1.0
+Flask-SQLAlchemy>=3.1.0,<4.0
+Flask-Migrate>=4.0.0,<5.0
+Werkzeug>=3.1.0,<4.0
+
+# ─── Database ────────────────────────────────────────────────────────────────
+SQLAlchemy>=2.0.0,<3.0
+# PostgreSQL driver (required for Supabase production)
+# Install: pip install psycopg2-binary  (or psycopg2 for non-binary)
+# psycopg2-binary>=2.9.0
+
+# ─── Security ────────────────────────────────────────────────────────────────
+# python-dotenv loads .env files in development
+python-dotenv>=1.0.0
+
+# ─── Testing ─────────────────────────────────────────────────────────────────
+pytest>=9.0.0
+
+# ─── Optional: Supabase Storage integration ──────────────────────────────────
+# supabase>=2.0.0
+
+# ─── Optional: Vercel WSGI adapter ───────────────────────────────────────────
+# The vercel.json builds use this package to expose the Flask WSGI app.
+# This is only needed when deploying to Vercel.
+# Uncomment when deploying:
+# vercel-wsgi>=0.2.0
+

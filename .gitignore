@@ -7,15 +7,29 @@ __pycache__/
 venv/
 venv*/
 env/
+
+# Environment / Secrets — NEVER commit these
 .env
+.env.local
+.env.production
+*.key
+*.pem
 
 # Database & Runtime Data
 medifind.db
 uploads/prescriptions/*
 !uploads/prescriptions/.gitkeep
 
+# Vercel build artifacts
+.vercel/
+.output/
+
 # IDE & Testing
 .vscode/
 .idea/
 .pytest_cache/
 *.log
+
+# OS
+.DS_Store
+Thumbs.db

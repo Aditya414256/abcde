@@ -1,9 +1,11 @@
 import os
 from flask import Flask, send_from_directory, jsonify
 from flask_login import LoginManager
+from flask_migrate import Migrate
 from backend.config import Config, BASE_DIR
 from backend.database import db
 from backend.models import User
+
 
 def create_app(config_class=Config):
     frontend_folder = os.path.join(BASE_DIR, 'frontend')
@@ -12,6 +14,7 @@ def create_app(config_class=Config):
 
     # Initialize extensions
     db.init_app(app)
+    Migrate(app, db)
 
     with app.app_context():
         from backend.seed import ensure_schema_migrations
@@ -23,7 +26,7 @@ def create_app(config_class=Config):
 
     @login_manager.user_loader
     def load_user(user_id):
-        return User.query.get(int(user_id))
+        return db.session.get(User, int(user_id))
 
     # Register blueprints
     from backend.routes.auth_routes import auth_bp
@@ -50,10 +53,9 @@ def create_app(config_class=Config):
         file_path = os.path.join(frontend_folder, filename)
         if os.path.exists(file_path) and os.path.isfile(file_path):
             return send_from_directory(frontend_folder, filename)
-        # Default to index if not found
         return send_from_directory(frontend_folder, 'HomePage.html')
 
-    # Global error handlers
+    # Global error handlers — never expose internal details
     @app.errorhandler(404)
     def not_found(e):
         return jsonify({'error': 'Resource not found'}), 404
