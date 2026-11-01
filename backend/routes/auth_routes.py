@@ -126,9 +126,9 @@ def register_pharmacy():
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
-    data = request.get_json() or {}
-    email = data.get('email', '').strip().lower()
-    password = data.get('password', '')
+    data = request.get_json(silent=True) or request.form or {}
+    email = (data.get('email') or '').strip().lower()
+    password = data.get('password') or 
 
     if not email or not password:
         return jsonify({'error': 'Email and password are required.'}), 400
