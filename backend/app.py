@@ -35,6 +35,7 @@ def create_app(config_class=Config):
     from backend.routes.pharmacy_routes import pharmacy_bp
     from backend.routes.admin_routes import admin_bp
     from backend.routes.notification_routes import common_bp
+    from backend.routes.request_routes import request_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(medicine_bp)
@@ -42,6 +43,7 @@ def create_app(config_class=Config):
     app.register_blueprint(pharmacy_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(common_bp)
+    app.register_blueprint(request_bp)
 
     # Static frontend page routes
     @app.route('/')

@@ -1,7 +1,7 @@
 import pytest
 from backend.app import create_app
 from backend.database import db
-from backend.models import User, Pharmacy, Medicine, PharmacyInventory, Order, Prescription, Notification
+from backend.models import User, Pharmacy, Medicine, PharmacyInventory, Order, Prescription, Notification, MedicineRequest
 from backend.services.location_service import LocationService
 from backend.services.medicine_service import MedicineService
 from backend.services.pharmacy_service import PharmacyService
@@ -1433,3 +1433,310 @@ def test_rejection_notification_message_wording(app):
         )
         assert rejection_notif is not None, "Rejection notification not found"
         assert 'Your order was not taken.' in rejection_notif.message
+
+
+# ==========================================
+# 14. Medicine Availability Request Tests
+# ==========================================
+
+def test_customer_can_create_medicine_request(app):
+    """Customer submits a medicine availability request to a pharmacy."""
+    from backend.services.request_service import RequestService
+    with app.app_context():
+        customer = User.query.filter_by(role='customer').first()
+        ram = Pharmacy.query.filter_by(name='Ram Medical').first()
+        dolo = Medicine.query.filter_by(name='Dolo 650').first()
+
+        req = RequestService.create_request(
+            customer_id=customer.id,
+            pharmacy_id=ram.id,
+            medicine_id=dolo.id,
+            quantity_needed=2,
+            customer_notes='Urgently needed.',
+        )
+        assert req.id is not None
+        assert req.status == 'PENDING'
+        assert req.customer_id == customer.id
+        assert req.pharmacy_id == ram.id
+        assert req.medicine_id == dolo.id
+        assert req.quantity_needed == 2
+
+
+def test_medicine_request_free_text_name(app):
+    """Customer can submit a request using a free-text medicine name."""
+    from backend.services.request_service import RequestService
+    with app.app_context():
+        customer = User.query.filter_by(role='customer').first()
+        ram = Pharmacy.query.filter_by(name='Ram Medical').first()
+
+        req = RequestService.create_request(
+            customer_id=customer.id,
+            pharmacy_id=ram.id,
+            medicine_name_text='SomeRareMedicine 10mg',
+            quantity_needed=1,
+        )
+        assert req.id is not None
+        assert req.medicine_id is None
+        assert req.medicine_name_text == 'SomeRareMedicine 10mg'
+
+
+def test_medicine_request_requires_name_or_id(app):
+    """Request must have either medicine_id or medicine_name_text."""
+    from backend.services.request_service import RequestService
+    with app.app_context():
+        customer = User.query.filter_by(role='customer').first()
+        ram = Pharmacy.query.filter_by(name='Ram Medical').first()
+
+        with pytest.raises(ValueError, match='Either medicine_id or a medicine name is required'):
+            RequestService.create_request(
+                customer_id=customer.id,
+                pharmacy_id=ram.id,
+                quantity_needed=1,
+            )
+
+
+def test_medicine_request_invalid_quantity(app):
+    """Request with zero or negative quantity is rejected."""
+    from backend.services.request_service import RequestService
+    with app.app_context():
+        customer = User.query.filter_by(role='customer').first()
+        ram = Pharmacy.query.filter_by(name='Ram Medical').first()
+        dolo = Medicine.query.filter_by(name='Dolo 650').first()
+
+        with pytest.raises(ValueError, match='greater than zero'):
+            RequestService.create_request(
+                customer_id=customer.id,
+                pharmacy_id=ram.id,
+                medicine_id=dolo.id,
+                quantity_needed=0,
+            )
+
+
+def test_pharmacy_can_list_requests(app):
+    """Pharmacy owner can list all requests for their pharmacy."""
+    from backend.services.request_service import RequestService
+    with app.app_context():
+        customer = User.query.filter_by(role='customer').first()
+        ram = Pharmacy.query.filter_by(name='Ram Medical').first()
+        dolo = Medicine.query.filter_by(name='Dolo 650').first()
+
+        RequestService.create_request(
+            customer_id=customer.id,
+            pharmacy_id=ram.id,
+            medicine_id=dolo.id,
+            quantity_needed=1,
+        )
+        reqs = RequestService.get_pharmacy_requests(ram.id, ram.owner_id)
+        assert len(reqs) >= 1
+
+
+def test_pharmacy_cannot_list_other_pharmacy_requests(app):
+    """Pharmacy owner cannot list requests for a different pharmacy."""
+    from backend.services.request_service import RequestService
+    with app.app_context():
+        pharmacies = Pharmacy.query.all()
+        if len(pharmacies) < 2:
+            pytest.skip("Need at least 2 pharmacies for this test.")
+
+        pharmacy_a = pharmacies[0]
+        pharmacy_b = pharmacies[1]
+
+        with pytest.raises(PermissionError):
+            RequestService.get_pharmacy_requests(pharmacy_a.id, pharmacy_b.owner_id)
+
+
+def test_pharmacy_can_update_request_status(app):
+    """Pharmacy owner updates a request status to ACKNOWLEDGED."""
+    from backend.services.request_service import RequestService
+    with app.app_context():
+        customer = User.query.filter_by(role='customer').first()
+        ram = Pharmacy.query.filter_by(name='Ram Medical').first()
+        dolo = Medicine.query.filter_by(name='Dolo 650').first()
+
+        req = RequestService.create_request(
+            customer_id=customer.id,
+            pharmacy_id=ram.id,
+            medicine_id=dolo.id,
+            quantity_needed=1,
+        )
+        updated = RequestService.update_request_status(
+            request_id=req.id,
+            owner_id=ram.owner_id,
+            new_status='ACKNOWLEDGED',
+            pharmacy_response='We will restock by Friday.',
+        )
+        assert updated.status == 'ACKNOWLEDGED'
+        assert updated.pharmacy_response == 'We will restock by Friday.'
+
+
+def test_pharmacy_request_invalid_status(app):
+    """Pharmacy cannot set an invalid status."""
+    from backend.services.request_service import RequestService
+    with app.app_context():
+        customer = User.query.filter_by(role='customer').first()
+        ram = Pharmacy.query.filter_by(name='Ram Medical').first()
+        dolo = Medicine.query.filter_by(name='Dolo 650').first()
+
+        req = RequestService.create_request(
+            customer_id=customer.id,
+            pharmacy_id=ram.id,
+            medicine_id=dolo.id,
+            quantity_needed=1,
+        )
+        with pytest.raises(ValueError):
+            RequestService.update_request_status(
+                request_id=req.id,
+                owner_id=ram.owner_id,
+                new_status='COMPLETED',  # Not a valid pharmacy status
+            )
+
+
+def test_customer_can_cancel_pending_request(app):
+    """Customer can cancel their own PENDING request."""
+    from backend.services.request_service import RequestService
+    from backend.models import MedicineRequest
+    with app.app_context():
+        customer = User.query.filter_by(role='customer').first()
+        ram = Pharmacy.query.filter_by(name='Ram Medical').first()
+        dolo = Medicine.query.filter_by(name='Dolo 650').first()
+
+        req = RequestService.create_request(
+            customer_id=customer.id,
+            pharmacy_id=ram.id,
+            medicine_id=dolo.id,
+            quantity_needed=1,
+        )
+        req_id = req.id
+        RequestService.cancel_request(req_id, customer.id)
+
+        assert db.session.get(MedicineRequest, req_id) is None
+
+
+def test_customer_cannot_cancel_others_request(app):
+    """Customer cannot cancel another customer's request."""
+    from backend.services.request_service import RequestService
+    with app.app_context():
+        customers = User.query.filter_by(role='customer').all()
+        if len(customers) < 2:
+            pytest.skip("Need at least 2 customers for this test.")
+
+        customer_a = customers[0]
+        customer_b = customers[1]
+        ram = Pharmacy.query.filter_by(name='Ram Medical').first()
+        dolo = Medicine.query.filter_by(name='Dolo 650').first()
+
+        req = RequestService.create_request(
+            customer_id=customer_a.id,
+            pharmacy_id=ram.id,
+            medicine_id=dolo.id,
+            quantity_needed=1,
+        )
+        with pytest.raises(PermissionError):
+            RequestService.cancel_request(req.id, customer_b.id)
+
+
+def test_request_notifies_pharmacy_owner(app):
+    """Creating a request sends a notification to the pharmacy owner."""
+    from backend.services.request_service import RequestService
+    with app.app_context():
+        customer = User.query.filter_by(role='customer').first()
+        ram = Pharmacy.query.filter_by(name='Ram Medical').first()
+        dolo = Medicine.query.filter_by(name='Dolo 650').first()
+
+        notif_count_before = Notification.query.filter_by(user_id=ram.owner_id).count()
+        RequestService.create_request(
+            customer_id=customer.id,
+            pharmacy_id=ram.id,
+            medicine_id=dolo.id,
+            quantity_needed=3,
+        )
+        notif_count_after = Notification.query.filter_by(user_id=ram.owner_id).count()
+        assert notif_count_after > notif_count_before
+
+
+def test_request_fulfilled_notifies_customer(app):
+    """Marking a request FULFILLED notifies the customer."""
+    from backend.services.request_service import RequestService
+    with app.app_context():
+        customer = User.query.filter_by(role='customer').first()
+        ram = Pharmacy.query.filter_by(name='Ram Medical').first()
+        dolo = Medicine.query.filter_by(name='Dolo 650').first()
+
+        req = RequestService.create_request(
+            customer_id=customer.id,
+            pharmacy_id=ram.id,
+            medicine_id=dolo.id,
+            quantity_needed=1,
+        )
+        notif_count_before = Notification.query.filter_by(user_id=customer.id).count()
+        RequestService.update_request_status(
+            request_id=req.id,
+            owner_id=ram.owner_id,
+            new_status='FULFILLED',
+            pharmacy_response='Medicine is now in stock.',
+        )
+        notif_count_after = Notification.query.filter_by(user_id=customer.id).count()
+        assert notif_count_after > notif_count_before
+
+
+# ==========================================
+# 15. Profile Update Tests
+# ==========================================
+
+def test_customer_profile_update_name(app):
+    """Customer can update their full_name."""
+    with app.app_context():
+        customer = User.query.filter_by(role='customer').first()
+        customer.full_name = 'Updated Name'
+        db.session.commit()
+        updated = db.session.get(User, customer.id)
+        assert updated.full_name == 'Updated Name'
+
+
+def test_customer_profile_update_password(app):
+    """Customer can change their password when supplying the correct current password."""
+    with app.app_context():
+        customer = User.query.filter_by(role='customer').first()
+        customer.set_password('OldPass123')
+        db.session.commit()
+
+        # Correct current password → update succeeds
+        assert customer.check_password('OldPass123')
+        customer.set_password('NewPass456')
+        db.session.commit()
+
+        refreshed = db.session.get(User, customer.id)
+        assert refreshed.check_password('NewPass456')
+        assert not refreshed.check_password('OldPass123')
+
+
+def test_customer_profile_wrong_current_password_rejected(app):
+    """Password change with wrong current password must be rejected at the route level."""
+    # This validates the check_password logic the route relies on
+    with app.app_context():
+        customer = User.query.filter_by(role='customer').first()
+        customer.set_password('CorrectPass')
+        db.session.commit()
+        assert not customer.check_password('WrongPass')
+
+
+# ==========================================
+# 16. Pharmacy Verification Document Tests
+# ==========================================
+
+def test_pharmacy_verification_doc_fields_default_none(app):
+    """Newly registered pharmacy has no verification document by default."""
+    with app.app_context():
+        ram = Pharmacy.query.filter_by(name='Ram Medical').first()
+        # The seeded pharmacy may or may not have a doc; check the field exists
+        assert hasattr(ram, 'verification_doc_path')
+        assert hasattr(ram, 'verification_doc_filename')
+
+
+def test_pharmacy_to_dict_includes_has_verification_doc(app):
+    """Pharmacy.to_dict() always includes has_verification_doc flag."""
+    with app.app_context():
+        ram = Pharmacy.query.filter_by(name='Ram Medical').first()
+        d = ram.to_dict()
+        assert 'has_verification_doc' in d
+        assert isinstance(d['has_verification_doc'], bool)

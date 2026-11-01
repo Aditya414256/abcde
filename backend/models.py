@@ -19,6 +19,9 @@ class User(UserMixin, db.Model):
     orders = db.relationship('Order', backref='customer', lazy=True)
     prescriptions = db.relationship('Prescription', backref='customer', lazy=True)
     notifications = db.relationship('Notification', backref='user', lazy=True, cascade='all, delete-orphan')
+    medicine_requests = db.relationship('MedicineRequest', backref='customer', lazy=True,
+                                        foreign_keys='MedicineRequest.customer_id',
+                                        cascade='all, delete-orphan')
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -58,11 +61,18 @@ class Pharmacy(db.Model):
     is_verified = db.Column(db.Boolean, default=False) # Only admin can verify
     verification_status = db.Column(db.String(20), default='PENDING') # PENDING, APPROVED, REJECTED
     is_active = db.Column(db.Boolean, default=True)
+    # Verification document: path to the uploaded drug-license / registration file.
+    # Populated by the pharmacy owner after registration.
+    # Reviewed manually by admin during the verification workflow.
+    verification_doc_path = db.Column(db.String(255), nullable=True)
+    verification_doc_filename = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships
     inventories = db.relationship('PharmacyInventory', backref='pharmacy', lazy=True, cascade='all, delete-orphan')
     orders = db.relationship('Order', backref='pharmacy', lazy=True)
+    medicine_requests = db.relationship('MedicineRequest', backref='pharmacy', lazy=True,
+                                        foreign_keys='MedicineRequest.pharmacy_id')
 
     def to_dict(self, include_owner=False):
         data = {
@@ -83,6 +93,7 @@ class Pharmacy(db.Model):
             'is_verified': self.is_verified,
             'verification_status': self.verification_status,
             'is_active': self.is_active,
+            'has_verification_doc': bool(self.verification_doc_path),
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
         if include_owner and self.owner:
@@ -106,6 +117,8 @@ class Medicine(db.Model):
     # Relationships
     inventories = db.relationship('PharmacyInventory', backref='medicine', lazy=True)
     orders = db.relationship('Order', backref='medicine', lazy=True)
+    medicine_requests = db.relationship('MedicineRequest', backref='medicine', lazy=True,
+                                        foreign_keys='MedicineRequest.medicine_id')
 
     def to_dict(self):
         return {
@@ -266,4 +279,53 @@ class Notification(db.Model):
             'is_read': self.is_read,
             'order_id': self.order_id,
             'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+
+class MedicineRequest(db.Model):
+    """
+    Medicine availability request — customers notify a pharmacy when a medicine
+    they need is out of stock. The pharmacy owner reviews and responds.
+
+    Status flow:
+        PENDING  → ACKNOWLEDGED (pharmacy has seen the request)
+                 → FULFILLED    (medicine is now available at the pharmacy)
+                 → REJECTED     (pharmacy cannot fulfil the request)
+    """
+    __tablename__ = 'medicine_requests'
+
+    id = db.Column(db.Integer, primary_key=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    pharmacy_id = db.Column(db.Integer, db.ForeignKey('pharmacies.id'), nullable=False)
+    medicine_id = db.Column(db.Integer, db.ForeignKey('medicines.id'), nullable=True)
+    # Free-text name when the medicine is not yet in the medicines catalogue
+    medicine_name_text = db.Column(db.String(150), nullable=True)
+    quantity_needed = db.Column(db.Integer, default=1, nullable=False)
+    customer_notes = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(20), default='PENDING', nullable=False, index=True)
+    # PENDING, ACKNOWLEDGED, FULFILLED, REJECTED
+    pharmacy_response = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        medicine_name = None
+        if self.medicine:
+            medicine_name = self.medicine.name
+        elif self.medicine_name_text:
+            medicine_name = self.medicine_name_text
+        return {
+            'id': self.id,
+            'customer_id': self.customer_id,
+            'customer_name': self.customer.full_name if self.customer else None,
+            'pharmacy_id': self.pharmacy_id,
+            'pharmacy_name': self.pharmacy.name if self.pharmacy else None,
+            'medicine_id': self.medicine_id,
+            'medicine_name': medicine_name,
+            'quantity_needed': self.quantity_needed,
+            'customer_notes': self.customer_notes,
+            'status': self.status,
+            'pharmacy_response': self.pharmacy_response,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }

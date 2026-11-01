@@ -172,3 +172,59 @@ def get_current_user():
             data['pharmacy'] = pharmacy.to_dict() if pharmacy else None
         return jsonify({'authenticated': True, 'user': data}), 200
     return jsonify({'authenticated': False, 'user': None}), 200
+
+
+@auth_bp.route('/profile', methods=['PATCH', 'PUT'])
+def update_profile():
+    """
+    Customer, pharmacy owner, or admin updates their own profile.
+    Updatable fields: full_name, phone.
+    Password change requires current_password + new_password + confirm_password.
+    """
+    if not current_user.is_authenticated:
+        return jsonify({'error': 'Login required.'}), 401
+
+    data = request.get_json() or {}
+
+    full_name = data.get('full_name', '').strip()
+    phone = data.get('phone', '').strip()
+    current_password = data.get('current_password', '')
+    new_password = data.get('new_password', '')
+    confirm_password = data.get('confirm_password', '')
+
+    updated = False
+
+    if full_name:
+        current_user.full_name = full_name
+        updated = True
+
+    if phone is not None and phone != current_user.phone:
+        current_user.phone = phone or None
+        updated = True
+
+    # Password change — only attempted when new_password is supplied
+    if new_password:
+        if not current_password:
+            return jsonify({'error': 'Current password is required to set a new password.'}), 400
+        if not current_user.check_password(current_password):
+            return jsonify({'error': 'Current password is incorrect.'}), 400
+        if len(new_password) < 6:
+            return jsonify({'error': 'New password must be at least 6 characters.'}), 400
+        if new_password != confirm_password:
+            return jsonify({'error': 'New passwords do not match.'}), 400
+        current_user.set_password(new_password)
+        updated = True
+
+    if not updated:
+        return jsonify({'message': 'No changes made.', 'user': current_user.to_dict()}), 200
+
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to update profile.'}), 500
+
+    return jsonify({
+        'message': 'Profile updated successfully.',
+        'user': current_user.to_dict(),
+    }), 200

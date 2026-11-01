@@ -387,3 +387,4 @@ if __name__ == '__main__':
     # ── Step 8: Report ──────────────────────────────────────────────────────
     success = print_report(test_url, pg_version, results)
     sys.exit(0 if success else 1)
+

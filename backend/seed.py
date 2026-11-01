@@ -5,10 +5,11 @@ from backend.database import db
 from backend.models import User, Pharmacy, Medicine, PharmacyInventory
 
 def ensure_schema_migrations():
-    """Ensure any newly added columns exist in tables for existing SQLite/DB files."""
+    """Ensure any newly added columns and tables exist for existing SQLite/DB files."""
     try:
         from sqlalchemy import inspect, text
         inspector = inspect(db.engine)
+
         if 'orders' in inspector.get_table_names():
             order_cols = [c['name'] for c in inspector.get_columns('orders')]
             if 'prescription_pending_at_pickup' not in order_cols:
@@ -17,6 +18,37 @@ def ensure_schema_migrations():
             if 'idempotency_key' not in order_cols:
                 with db.engine.begin() as conn:
                     conn.execute(text("ALTER TABLE orders ADD COLUMN idempotency_key VARCHAR(100)"))
+
+        if 'pharmacies' in inspector.get_table_names():
+            pharma_cols = [c['name'] for c in inspector.get_columns('pharmacies')]
+            if 'verification_doc_path' not in pharma_cols:
+                with db.engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE pharmacies ADD COLUMN verification_doc_path VARCHAR(255)"))
+            if 'verification_doc_filename' not in pharma_cols:
+                with db.engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE pharmacies ADD COLUMN verification_doc_filename VARCHAR(255)"))
+
+        if 'medicine_requests' not in inspector.get_table_names():
+            with db.engine.begin() as conn:
+                conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS medicine_requests (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        customer_id INTEGER NOT NULL REFERENCES users(id),
+                        pharmacy_id INTEGER NOT NULL REFERENCES pharmacies(id),
+                        medicine_id INTEGER REFERENCES medicines(id),
+                        medicine_name_text VARCHAR(150),
+                        quantity_needed INTEGER NOT NULL DEFAULT 1,
+                        customer_notes TEXT,
+                        status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+                        pharmacy_response TEXT,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                """))
+                conn.execute(text(
+                    "CREATE INDEX IF NOT EXISTS ix_medicine_requests_status "
+                    "ON medicine_requests (status)"
+                ))
     except Exception as e:
         print(f"Schema migration note: {e}")
 

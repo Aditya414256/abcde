@@ -108,3 +108,50 @@ def get_stats():
             'total_medicines': total_medicines,
         }
     }), 200
+
+
+@admin_bp.route('/prescriptions', methods=['GET'])
+def list_prescriptions():
+    """Admin: list all prescriptions, optionally filtered by status."""
+    if not check_admin():
+        return jsonify({'error': 'Admin authorization required.'}), 403
+
+    from backend.models import Prescription
+    status_filter = request.args.get('status')  # PENDING, APPROVED, REJECTED
+    query = Prescription.query
+    if status_filter:
+        query = query.filter_by(status=status_filter)
+    prescriptions = query.order_by(Prescription.created_at.desc()).all()
+    return jsonify({'prescriptions': [p.to_dict() for p in prescriptions]}), 200
+
+
+@admin_bp.route('/prescriptions/<int:prescription_id>/review', methods=['POST'])
+def admin_review_prescription(prescription_id):
+    """
+    Admin manually reviews an uploaded prescription.
+    Approval and rejection are separate from order acceptance.
+    Rejection requires a reason.
+    """
+    if not check_admin():
+        return jsonify({'error': 'Admin authorization required.'}), 403
+
+    from backend.services.prescription_service import PrescriptionService
+    data = request.get_json() or {}
+    status = data.get('status')  # 'APPROVED' or 'REJECTED'
+    notes = data.get('notes')
+
+    try:
+        prescription = PrescriptionService.review_prescription(
+            prescription_id=prescription_id,
+            reviewer_user=current_user,
+            status=status,
+            notes=notes,
+        )
+        return jsonify({
+            'message': f'Prescription {status.lower()} successfully.',
+            'prescription': prescription.to_dict(),
+        }), 200
+    except (ValueError, PermissionError) as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception:
+        return jsonify({'error': 'Failed to review prescription.'}), 500
