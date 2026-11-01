@@ -61,3 +61,4 @@ with app.app_context():
             print(f"alembic_version already set: {[r[0] for r in res]}")
 
 print("PostgreSQL schema initialization verified successfully!")
+
