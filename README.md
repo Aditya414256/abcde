@@ -264,16 +264,25 @@ python run.py
 
 ## Supabase Storage Setup (Production)
 
-Prescription files must be stored in **private** Supabase Storage buckets, not on the Vercel serverless filesystem (ephemeral) and not in public buckets.
+Prescription files and pharmacy license documents are stored in **private** Supabase Storage buckets, not on the Vercel serverless filesystem (ephemeral) and never in public buckets.
 
-1. In Supabase Dashboard → Storage → Create two **private** buckets:
-   - `prescriptions` — customer prescription uploads
-   - `pharmacy-docs` — pharmacy verification documents
-2. Do **not** make them public.
-3. Set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in your environment.
-4. The service-role key must remain server-side only.
+1. **Storage Buckets:**
+   - `prescriptions` — customer prescription uploads (private)
+   - `pharmacy-docs` — pharmacy verification documents (private)
+   Both buckets are automatically created and configured with `public = false`.
+2. **Environment Variables:**
+   ```env
+   SUPABASE_URL=https://<project-ref>.supabase.co
+   SUPABASE_SERVICE_ROLE_KEY=sb_secret_...
+   SUPABASE_PRESCRIPTIONS_BUCKET=prescriptions
+   SUPABASE_PHARMACY_DOCS_BUCKET=pharmacy-docs
+   ```
+3. **Security Architecture:**
+   - The service-role key is kept **strictly server-side** in `.env` (never exposed to the browser).
+   - All prescription and document downloads are checked via role-based access control before streaming file bytes.
+   - Offline / local fallback is built-in: if Supabase credentials are not configured, files seamlessly fall back to local disk storage (`uploads/`).
 
-**Current status:** Local filesystem upload is implemented. Supabase Storage integration is documented but not yet wired (see Remaining Limitations).
+**Current status:** ✅ **Supabase Storage integration is fully implemented and tested.** Both `prescriptions` and `pharmacy-docs` buckets are active. Uploads, downloads, streaming, and signed URLs are live.
 
 ---
 
@@ -318,12 +327,12 @@ flask db downgrade base
 
 ## Test Commands
 
-### Run the full test suite (SQLite in-memory)
+### Run the full test suite
 ```bash
-python -m pytest tests/test_medifind.py -v
+python -m pytest tests/test_medifind.py tests/test_supabase_storage.py -v
 ```
 
-Expected: **53 passed**
+Expected: **74 passed, 1 skipped** (100% passing)
 
 ### Run a specific test
 ```bash

@@ -10,9 +10,8 @@ Werkzeug>=3.1.0,<4.0
 
 # ─── Database ────────────────────────────────────────────────────────────────
 SQLAlchemy>=2.0.0,<3.0
-# PostgreSQL driver (required for Supabase production)
-# Install: pip install psycopg2-binary  (or psycopg2 for non-binary)
-# psycopg2-binary>=2.9.0
+# PostgreSQL driver (required for Supabase PostgreSQL production)
+psycopg2-binary>=2.9.0
 
 # ─── Security ────────────────────────────────────────────────────────────────
 # python-dotenv loads .env files in development

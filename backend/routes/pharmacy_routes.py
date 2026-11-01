@@ -1,4 +1,6 @@
+import io
 import logging
+import mimetypes
 import os
 import uuid
 from werkzeug.utils import secure_filename
@@ -7,6 +9,7 @@ from flask_login import login_required, current_user
 from backend.services.pharmacy_service import PharmacyService
 from backend.services.inventory_service import InventoryService
 from backend.services.prescription_service import PrescriptionService
+from backend.services.supabase_storage_service import SupabaseStorageService
 from backend.models import Pharmacy, Order, PharmacyInventory, Medicine
 from backend.database import db
 from backend.config import Config
@@ -144,7 +147,8 @@ def review_prescription(prescription_id):
 def upload_verification_doc():
     """
     Pharmacy owner uploads their drug-license / registration document for admin review.
-    The file is stored in protected local storage (not publicly served).
+    - If Supabase Storage is configured: uploads to private 'pharmacy-docs' bucket.
+    - If not configured: stores in protected local storage folder.
     Admin reviews the document during the verification workflow.
     """
     if not current_user.is_authenticated or current_user.role != 'pharmacy':
@@ -168,41 +172,55 @@ def upload_verification_doc():
             'error': f"Invalid file extension. Allowed: {', '.join(sorted(_ALLOWED_DOC_EXTENSIONS))}"
         }), 400
 
-    # Store in a separate folder from prescriptions
-    doc_folder = os.path.join(os.path.dirname(Config.UPLOAD_FOLDER), 'pharmacy_docs')
-    os.makedirs(doc_folder, exist_ok=True)
-
     unique_filename = f"pharma_{pharmacy.id}_{uuid.uuid4().hex}_{filename}"
-    full_path = os.path.join(doc_folder, unique_filename)
 
     try:
-        # Remove old doc file if it exists
-        if pharmacy.verification_doc_path and os.path.exists(pharmacy.verification_doc_path):
-            try:
-                os.remove(pharmacy.verification_doc_path)
-            except OSError:
-                logger.warning("Could not remove old verification doc: %s", pharmacy.verification_doc_path)
+        if SupabaseStorageService.is_configured():
+            bucket = getattr(Config, 'SUPABASE_PHARMACY_DOCS_BUCKET', 'pharmacy-docs')
+            # If old doc was in Supabase, remove it
+            if pharmacy.verification_doc_path and pharmacy.verification_doc_path.startswith('supabase://'):
+                old_name = pharmacy.verification_doc_path.split('/')[-1]
+                SupabaseStorageService.delete_file(bucket, old_name)
 
-        file.save(full_path)
-    except Exception:
-        logger.exception("Failed to save verification document for pharmacy %s", pharmacy.id)
-        return jsonify({'error': 'Failed to save document.'}), 500
+            stored_path = SupabaseStorageService.upload_file(
+                bucket=bucket,
+                file_storage=file,
+                dest_filename=unique_filename
+            )
+        else:
+            # Local filesystem fallback
+            doc_folder = os.path.join(os.path.dirname(Config.UPLOAD_FOLDER), 'pharmacy_docs')
+            os.makedirs(doc_folder, exist_ok=True)
+            stored_path = os.path.join(doc_folder, unique_filename)
 
-    pharmacy.verification_doc_path = full_path
-    pharmacy.verification_doc_filename = filename
-    db.session.commit()
+            if pharmacy.verification_doc_path and os.path.exists(pharmacy.verification_doc_path):
+                try:
+                    os.remove(pharmacy.verification_doc_path)
+                except OSError:
+                    logger.warning("Could not remove old verification doc: %s", pharmacy.verification_doc_path)
 
-    return jsonify({
-        'message': 'Verification document uploaded successfully. Awaiting admin review.',
-        'has_verification_doc': True,
-        'original_filename': filename,
-    }), 200
+            file.save(stored_path)
+
+        pharmacy.verification_doc_path = stored_path
+        pharmacy.verification_doc_filename = filename
+        db.session.commit()
+
+        return jsonify({
+            'message': 'Verification document uploaded successfully. Awaiting admin review.',
+            'has_verification_doc': True,
+            'original_filename': filename,
+        }), 200
+
+    except Exception as e:
+        logger.exception("Failed to save verification document for pharmacy %s: %s", pharmacy.id, e)
+        return jsonify({'error': f'Failed to save document: {str(e)}'}), 500
 
 
 @pharmacy_bp.route('/pharmacy/verification-doc', methods=['GET'])
 def get_verification_doc():
     """
     Admin or the pharmacy owner can download the verification document.
+    Streams securely from Supabase Storage or local storage.
     """
     if not current_user.is_authenticated:
         return jsonify({'error': 'Unauthorized.'}), 401
@@ -225,10 +243,34 @@ def get_verification_doc():
     if not pharmacy.verification_doc_path:
         return jsonify({'error': 'No verification document uploaded yet.'}), 404
 
-    if not os.path.exists(pharmacy.verification_doc_path):
+    path = pharmacy.verification_doc_path
+    filename = pharmacy.verification_doc_filename or 'verification_document'
+
+    # Case 1: Supabase Storage
+    if path.startswith('supabase://'):
+        without_prefix = path[len('supabase://'):]
+        parts = without_prefix.split('/', 1)
+        bucket = parts[0]
+        dest_filename = parts[1] if len(parts) > 1 else ''
+        try:
+            stream, content_type = SupabaseStorageService.download_file(bucket, dest_filename)
+            return send_file(
+                stream,
+                download_name=filename,
+                mimetype=content_type,
+                as_attachment=False
+            )
+        except Exception as e:
+            logger.exception("Failed to stream document from Supabase Storage: %s", e)
+            return jsonify({'error': 'Document file not found in storage.'}), 404
+
+    # Case 2: Local storage
+    if not os.path.exists(path):
         return jsonify({'error': 'Document file not found on server.'}), 404
 
+    content_type, _ = mimetypes.guess_type(path)
     return send_file(
-        pharmacy.verification_doc_path,
-        download_name=pharmacy.verification_doc_filename or 'verification_document',
+        path,
+        download_name=filename,
+        mimetype=content_type or 'application/octet-stream',
     )

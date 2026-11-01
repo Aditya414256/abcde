@@ -61,6 +61,7 @@ def get_prescription_file(prescription_id):
     """
     Secure file retrieval: Authorization required.
     Prescription files are never publicly accessible — always checked here.
+    Supports streaming from Supabase Storage or local storage.
     """
     if not current_user.is_authenticated:
         return jsonify({'error': 'Unauthorized.'}), 401
@@ -72,7 +73,15 @@ def get_prescription_file(prescription_id):
     if not PrescriptionService.check_access_permission(prescription, current_user):
         return jsonify({'error': 'Access denied to this prescription file.'}), 403
 
-    if not os.path.exists(prescription.file_path):
-        return jsonify({'error': 'File not found on server.'}), 404
-
-    return send_file(prescription.file_path, download_name=prescription.original_filename)
+    try:
+        stream, content_type, filename = PrescriptionService.get_prescription_file_stream(prescription)
+        return send_file(
+            stream,
+            download_name=filename,
+            mimetype=content_type,
+            as_attachment=False
+        )
+    except FileNotFoundError:
+        return jsonify({'error': 'File not found on storage or server.'}), 404
+    except Exception as e:
+        return jsonify({'error': f'Failed to retrieve prescription file: {str(e)}'}), 500
