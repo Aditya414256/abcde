@@ -3,6 +3,7 @@ import logging
 import mimetypes
 import os
 import uuid
+from typing import Tuple
 from werkzeug.utils import secure_filename
 from backend.models import Prescription, Order
 from backend.database import db

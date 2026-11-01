@@ -7,6 +7,9 @@ from backend.models import User, Pharmacy, Medicine, PharmacyInventory
 def ensure_schema_migrations():
     """Ensure any newly added columns and tables exist for existing SQLite/DB files."""
     try:
+        # Skip for PostgreSQL - Alembic handles migrations there
+        if db.engine.dialect.name != 'sqlite':
+            return
         from sqlalchemy import inspect, text
         inspector = inspect(db.engine)
 

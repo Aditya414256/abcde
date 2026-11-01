@@ -12,20 +12,25 @@ MediFind is a full-stack healthcare web application that connects customers with
 - Store Pickup: view all eligible pharmacies with stock, select preferred store, place order
 - Home Delivery: view delivery-enabled pharmacies, submit address, upload prescription when required
 - Order history & status tracking
-- In-app notifications (order placed, accepted, rejected, status changes)
+- Medicine availability requests (notify pharmacy when medicine is out of stock)
+- In-app notifications (order placed, accepted, rejected, status changes, request updates)
 - Cancel orders in PENDING or ACCEPTED state
-- Prescription upload for Home Delivery of prescription-required medicines
+- Prescription upload to private Supabase Storage bucket with local fallback
+- Profile management (update full name and change password)
 
 ### Pharmacy Owner
 - Dashboard with incoming orders (PENDING → ACCEPTED → CONFIRMED → PREPARING → READY/OUT → COMPLETED)
 - Inventory management (add/update medicines, quantities, prices, batch numbers, expiry dates)
 - Manual prescription review for Home Delivery orders
 - Physical prescription verification protocol for Store Pickup orders (verified at counter)
-- In-app notifications for new orders and verification updates
+- Upload pharmacy verification documents (drug license) to private Supabase Storage
+- Review and update customer medicine availability requests (PENDING → ACKNOWLEDGED → FULFILLED / REJECTED)
+- In-app notifications for new orders, customer requests, and verification updates
 
 ### Admin
-- Review pharmacy registration documents
+- Review pharmacy registration documents (streamed securely from Supabase Storage)
 - Approve or reject pharmacy verification
+- Manual prescription review permissions
 - Toggle pharmacy active/inactive status
 - Platform metrics dashboard
 
@@ -52,23 +57,26 @@ backend/
 ├── config.py            # Config classes: Config, DevelopmentConfig, ProductionConfig, TestingConfig
 ├── database.py          # SQLAlchemy db instance
 ├── models.py            # SQLAlchemy models: User, Pharmacy, Medicine, PharmacyInventory,
-│                        #   Prescription, Order, Notification
+│                        #   Prescription, Order, Notification, MedicineRequest
 ├── seed.py              # Database seed + schema migration helper
 ├── routes/
-│   ├── auth_routes.py        # /api/auth/* — register, login, logout, current-user
-│   ├── medicine_routes.py    # /api/medicines/* — search, suggestions, detail
-│   ├── order_routes.py       # /api/orders/* — pickup, delivery, status, idempotency
-│   ├── pharmacy_routes.py    # /api/pharmacies, /api/pharmacy/* — directory, orders, inventory
-│   ├── admin_routes.py       # /api/admin/* — verification, stats
-│   └── notification_routes.py # /api/notifications, /api/prescriptions/*
+│   ├── auth_routes.py         # /api/auth/* — register, login, logout, current-user, profile
+│   ├── medicine_routes.py     # /api/medicines/* — search, suggestions, detail
+│   ├── order_routes.py        # /api/orders/* — pickup, delivery, status, idempotency
+│   ├── pharmacy_routes.py     # /api/pharmacies, /api/pharmacy/* — directory, orders, inventory, docs
+│   ├── admin_routes.py        # /api/admin/* — verification, prescription review, stats
+│   ├── notification_routes.py # /api/notifications, /api/prescriptions/*
+│   └── request_routes.py      # /api/requests, /api/pharmacy/requests — medicine availability requests
 └── services/
-    ├── order_service.py        # Core order business logic, state machine, stock rules
-    ├── pharmacy_service.py     # Pharmacy registration, verification, listing
-    ├── inventory_service.py    # Inventory CRUD, non-negative enforcement
-    ├── prescription_service.py # Secure upload, access control, manual review
-    ├── notification_service.py # In-app notification creation and retrieval
-    ├── medicine_service.py     # Search and autocomplete
-    └── location_service.py     # Haversine distance calculation
+    ├── order_service.py            # Core order business logic, state machine, stock rules
+    ├── pharmacy_service.py         # Pharmacy registration, verification, listing
+    ├── inventory_service.py        # Inventory CRUD, non-negative enforcement
+    ├── prescription_service.py     # Secure upload, access control, manual review
+    ├── supabase_storage_service.py # Supabase Storage integration (prescriptions, pharmacy-docs)
+    ├── request_service.py          # Medicine availability request workflow
+    ├── notification_service.py     # In-app notification creation and retrieval
+    ├── medicine_service.py         # Search and autocomplete
+    └── location_service.py         # Haversine distance calculation
 
 frontend/
 ├── HomePage.html/css       # Customer home with medicine autocomplete
@@ -81,8 +89,11 @@ frontend/
 └── js/                     # Modular ES6 scripts (api.js, auth.js, selection.js, etc.)
 
 tests/
-├── test_medifind.py        # Main pytest suite (53 tests)
-└── test_pg_concurrency.py  # PostgreSQL-only concurrency safety tests
+├── test_medifind.py        # Main pytest suite (70 tests: security, state machine, requests, profile)
+├── test_supabase_storage.py# Supabase Storage integration tests (5 tests: upload, download, sign, delete)
+├── test_pg_concurrency.py  # PostgreSQL-only concurrency safety tests
+├── verify_supabase_db.py   # PostgreSQL connection and dialect diagnostic
+└── apply_pg_schema.py      # Supabase PostgreSQL schema initialization and Alembic stamper
 
 api/
 └── index.py                # Vercel serverless entry point
@@ -409,20 +420,12 @@ Vercel deployment configuration is in `vercel.json`. The Flask WSGI app is expos
 
 ---
 
-## Known Limitations
+## Known Limitations & Production Recommendations
 
-1. **Supabase Storage not yet wired**: Prescription files are currently stored on the local filesystem. On Vercel (ephemeral filesystem) this will not persist. Supabase Storage integration must be implemented before deploying to Vercel with real prescriptions.
+1. **CSRF tokens on state-changing API endpoints**: The application uses a JSON API with session cookies protected by `SameSite=Lax` and `HttpOnly`. For high-security production environments, integrating Flask-WTF CSRF tokens on mutating requests is recommended as an additional layer of defense.
 
-2. **No CSRF tokens on API endpoints**: The application uses a SPA-style JSON API with session cookies. CSRF protection via `SameSite=Lax` is in place. For additional hardening, Flask-WTF CSRF tokens can be added to all state-changing API routes.
+2. **Redis distributed rate limiting**: While endpoints validate requests and prevent duplicate orders with unique idempotency keys, an in-memory or Redis-backed rate limiter (e.g., Flask-Limiter) is recommended for production to protect against volumetric brute force.
 
-3. **PostgreSQL concurrency tests**: Not run in this environment (no local PostgreSQL installation). Tests are marked SKIPPED with setup instructions provided.
+3. **`datetime.utcnow()` SQLAlchemy schema defaults**: SQLAlchemy's legacy `default=datetime.utcnow` in model column definitions produces deprecation warnings on Python 3.12+. Internal service layers already use timezone-aware UTC. Standardizing the model declarations can be performed in a future migration window.
 
-4. **Rate limiting**: No in-memory or distributed rate limiter is implemented. For production, a persistent rate limiter (e.g., Redis + Flask-Limiter) is recommended.
-
-5. **Pharmacy verification documents**: The upload endpoint for pharmacy verification documents (drug license images) is not yet implemented. Currently only the license number is collected at registration.
-
-6. **Medicine availability requests**: Referenced in the spec but not implemented in the current codebase. No routes or models exist for this feature.
-
-7. **`datetime.utcnow()` SQLAlchemy schema defaults**: SQLAlchemy's `default=datetime.utcnow` in model column definitions generates deprecation warnings on Python 3.12+. These are in the SQLAlchemy library internals for the model defaults and require a SQLAlchemy schema change to use `datetime.now(timezone.utc)` — deferred to avoid unnecessary model/migration churn.
-
-8. **Vercel deployment unverified**: Configuration is prepared but actual deployment has not been performed or verified. Do not deploy without first testing on a staging environment.
+4. **Vercel deployment verification**: Vercel configuration files (`vercel.json` and `api/index.py`) are fully structured, and the database and file storage run on external cloud services (Supabase PostgreSQL and Supabase Storage). Live deployment to Vercel should be verified on a staging preview before routing production traffic.

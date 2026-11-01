@@ -98,6 +98,7 @@ class TestingConfig(Config):
     """Testing configuration. Uses in-memory SQLite."""
     TESTING = True
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+    SQLALCHEMY_ENGINE_OPTIONS = {}  # Override: no PG-specific connect_args for SQLite
     SECRET_KEY = 'test-secret-key-not-for-production'
     # Disable CSRF in tests
     WTF_CSRF_ENABLED = False

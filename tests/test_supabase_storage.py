@@ -143,3 +143,4 @@ def test_prescription_service_fallback_when_unconfigured(test_app, tmp_path):
                 stream, ctype, fname = PrescriptionService.get_prescription_file_stream(prescription)
                 assert stream.read() == b"Local fallback prescription"
                 assert fname == "rx_local.pdf"
+

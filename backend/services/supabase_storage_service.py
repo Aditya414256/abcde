@@ -180,3 +180,4 @@ class SupabaseStorageService:
         except Exception as e:
             logger.warning("Failed to delete object %s from bucket %s: %s", dest_filename, bucket, e)
             return False
+
