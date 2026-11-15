@@ -177,17 +177,16 @@ def upload_verification_doc():
     try:
         if SupabaseStorageService.is_configured():
             bucket = getattr(Config, 'SUPABASE_PHARMACY_DOCS_BUCKET', 'pharmacy-docs')
-            # If old doc was in Supabase, remove it
-            if pharmacy.verification_doc_path and pharmacy.verification_doc_path.startswith('supabase://'):
-                old_name = pharmacy.verification_doc_path.split('/')[-1]
-                SupabaseStorageService.delete_file(bucket, old_name)
-
+            # Preserve the existing document until the replacement is uploaded and saved.
+            old_path = pharmacy.verification_doc_path
             stored_path = SupabaseStorageService.upload_file(
                 bucket=bucket,
                 file_storage=file,
                 dest_filename=unique_filename
             )
         else:
+            if os.environ.get('VERCEL') or os.environ.get('FLASK_ENV') == 'production':
+                return jsonify({'error': 'Persistent document storage is not configured.'}), 503
             # Local filesystem fallback
             doc_folder = os.path.join(os.path.dirname(Config.UPLOAD_FOLDER), 'pharmacy_docs')
             os.makedirs(doc_folder, exist_ok=True)
@@ -204,6 +203,13 @@ def upload_verification_doc():
         pharmacy.verification_doc_path = stored_path
         pharmacy.verification_doc_filename = filename
         db.session.commit()
+        # Cleanup failure must not discard a successfully saved replacement.
+        if SupabaseStorageService.is_configured() and old_path and old_path.startswith('supabase://'):
+            try:
+                old_bucket, old_name = old_path[len('supabase://'):].split('/', 1)
+                SupabaseStorageService.delete_file(old_bucket, old_name)
+            except Exception:
+                logger.warning('Old verification document cleanup failed for pharmacy %s', pharmacy.id)
 
         return jsonify({
             'message': 'Verification document uploaded successfully. Awaiting admin review.',
@@ -213,7 +219,7 @@ def upload_verification_doc():
 
     except Exception as e:
         logger.exception("Failed to save verification document for pharmacy %s: %s", pharmacy.id, e)
-        return jsonify({'error': f'Failed to save document: {str(e)}'}), 500
+        return jsonify({'error': 'Failed to save document.'}), 500
 
 
 @pharmacy_bp.route('/pharmacy/verification-doc', methods=['GET'])

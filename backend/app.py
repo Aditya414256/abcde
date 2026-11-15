@@ -11,6 +11,8 @@ def create_app(config_class=Config):
     frontend_folder = os.path.join(BASE_DIR, 'frontend')
     app = Flask(__name__, static_folder=frontend_folder, static_url_path='')
     app.config.from_object(config_class)
+    if (os.environ.get('VERCEL') or os.environ.get('FLASK_ENV') == 'production') and not app.config.get('SECRET_KEY'):
+        raise RuntimeError('SECRET_KEY is required in production.')
 
     # Initialize extensions
     db.init_app(app)
@@ -28,7 +30,9 @@ def create_app(config_class=Config):
                 from backend.seed import ensure_schema_migrations
                 ensure_schema_migrations()
         except Exception as err:
-            app.logger.warning('Startup schema note: %s', err)
+            app.logger.exception('Database initialization failed: %s', err)
+            if db.engine.dialect.name != 'sqlite':
+                raise
 
     login_manager = LoginManager()
     login_manager.init_app(app)
@@ -75,6 +79,6 @@ def create_app(config_class=Config):
     @app.errorhandler(500)
     def server_error(e):
         app.logger.error('Unhandled Server Error: %s', e, exc_info=True)
-        return jsonify({'error': 'Internal server error', 'message': str(e)}), 500
+        return jsonify({'error': 'Internal server error'}), 500
 
     return app

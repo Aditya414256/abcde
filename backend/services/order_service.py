@@ -57,6 +57,8 @@ class OrderService:
         if idempotency_key:
             existing_order = Order.query.filter_by(idempotency_key=idempotency_key).first()
             if existing_order:
+                if existing_order.customer_id != customer_id:
+                    raise ValueError('Idempotency key already belongs to a different customer.')
                 logger.info("Returning existing order %s for idempotency key %s",
                             existing_order.order_number, idempotency_key)
                 return existing_order
@@ -159,6 +161,8 @@ class OrderService:
             if idempotency_key:
                 existing_order = Order.query.filter_by(idempotency_key=idempotency_key).first()
                 if existing_order:
+                    if existing_order.customer_id != customer_id:
+                        raise ValueError('Idempotency key already belongs to a different customer.')
                     return existing_order
             raise
 
@@ -404,6 +408,10 @@ class OrderService:
         # ACCEPTED → CONFIRMED: deduct stock atomically with row-level lock
         # -------------------------------------------------------------------
         if current_status == 'ACCEPTED' and new_status == 'CONFIRMED':
+            # Delivery prescription orders cannot proceed without manual approval.
+            if order.order_type == 'DELIVERY' and order.medicine.requires_prescription:
+                if not order.prescription or order.prescription.status != 'APPROVED':
+                    raise ValueError('Prescription must be approved before confirming this delivery order.')
             inv = PharmacyInventory.query.filter_by(
                 pharmacy_id=order.pharmacy_id,
                 medicine_id=order.medicine_id,
