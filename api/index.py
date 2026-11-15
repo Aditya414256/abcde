@@ -32,7 +32,8 @@ try:
         except Exception:
             app.logger.exception('Database health check failed')
             return jsonify({'status': 'unhealthy', 'database': 'unavailable'}), 503
-        return jsonify({'status': 'healthy', 'database': 'available'}), 200
+        return jsonify({'status': 'healthy', 'database': 'available',
+                        'version': os.environ.get('VERCEL_GIT_COMMIT_SHA', 'local')}), 200
 
     @app.route('/api/health/storage', methods=['GET'])
     def storage_health_check():
@@ -45,7 +46,7 @@ try:
         try:
             base = SupabaseStorageService.get_base_url()
             headers = SupabaseStorageService._get_headers()
-            for bucket in ('prescriptions', 'pharmacy-docs'):
+            for bucket in (app.config['SUPABASE_PRESCRIPTIONS_BUCKET'], app.config['SUPABASE_PHARMACY_DOCS_BUCKET']):
                 req = urllib.request.Request(
                     f'{base}/storage/v1/bucket/{bucket}', headers=headers, method='GET'
                 )

@@ -22,6 +22,27 @@ _ALLOWED_DOC_EXTENSIONS = {'png', 'jpg', 'jpeg', 'pdf', 'webp'}
 pharmacy_bp = Blueprint('pharmacy', __name__, url_prefix='/api')
 
 
+@pharmacy_bp.route('/pharmacy/profile', methods=['PATCH'])
+def update_pharmacy_profile():
+    if not current_user.is_authenticated or current_user.role != 'pharmacy':
+        return jsonify({'error': 'Pharmacy login required.'}), 403
+    pharmacy = PharmacyService.get_pharmacy_by_owner_id(current_user.id)
+    if not pharmacy:
+        return jsonify({'error': 'Pharmacy not found.'}), 404
+    data = request.get_json() or {}
+    from backend.validation import coordinates
+    if 'latitude' in data or 'longitude' in data:
+        lat, lon = coordinates(data.get('latitude'), data.get('longitude'))
+        pharmacy.latitude, pharmacy.longitude = lat, lon
+    for key in ('supports_pickup', 'supports_delivery'):
+        if key in data:
+            setattr(pharmacy, key, data[key])
+    if 'delivery_fee' in data:
+        pharmacy.delivery_fee = float(data['delivery_fee'])
+    db.session.commit()
+    return jsonify({'message': 'Pharmacy settings saved.', 'pharmacy': pharmacy.to_dict()}), 200
+
+
 @pharmacy_bp.route('/pharmacies', methods=['GET'])
 def list_pharmacies():
     """
@@ -111,7 +132,8 @@ def manage_inventory():
             'message': 'Inventory updated successfully.',
             'item': inv.to_dict()
         }), 200
-    except ValueError as e:
+    except (ValueError, TypeError, OverflowError) as e:
+        db.session.rollback()
         return jsonify({'error': str(e)}), 400
 
 

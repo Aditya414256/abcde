@@ -1,7 +1,12 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 from backend.database import db
+
+
+def utcnow():
+    """UTC timestamps matching the existing timezone-naive database columns."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
@@ -12,7 +17,7 @@ class User(UserMixin, db.Model):
     full_name = db.Column(db.String(100), nullable=False)
     phone = db.Column(db.String(20), nullable=True)
     role = db.Column(db.String(20), nullable=False, default='customer') # 'customer', 'pharmacy', 'admin'
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utcnow)
 
     # Relationships
     pharmacies = db.relationship('Pharmacy', backref='owner', lazy=True, cascade='all, delete-orphan')
@@ -66,7 +71,7 @@ class Pharmacy(db.Model):
     # Reviewed manually by admin during the verification workflow.
     verification_doc_path = db.Column(db.String(255), nullable=True)
     verification_doc_filename = db.Column(db.String(255), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utcnow)
 
     # Relationships
     inventories = db.relationship('PharmacyInventory', backref='pharmacy', lazy=True, cascade='all, delete-orphan')
@@ -112,7 +117,7 @@ class Medicine(db.Model):
     dosage_form = db.Column(db.String(50), nullable=True) # e.g. "Tablet", "Syrup"
     description = db.Column(db.Text, nullable=True)
     requires_prescription = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utcnow)
 
     # Relationships
     inventories = db.relationship('PharmacyInventory', backref='medicine', lazy=True)
@@ -149,7 +154,7 @@ class PharmacyInventory(db.Model):
     batch_number = db.Column(db.String(50), nullable=True)
     expiry_date = db.Column(db.String(20), nullable=True)
     notes = db.Column(db.Text, nullable=True)
-    last_updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
 
     def recalculate_stock_status(self):
         if self.quantity <= 0:
@@ -185,7 +190,7 @@ class Prescription(db.Model):
     original_filename = db.Column(db.String(255), nullable=False)
     status = db.Column(db.String(20), default='PENDING') # PENDING, APPROVED, REJECTED (Strict manual review, no AI auto-approval)
     review_notes = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utcnow)
 
     orders = db.relationship('Order', backref='prescription', lazy=True)
 
@@ -228,8 +233,8 @@ class Order(db.Model):
     # False → no prescription required (OTC), or prescription was uploaded digitally for a delivery order.
     prescription_pending_at_pickup = db.Column(db.Boolean, default=False, nullable=False)
     idempotency_key = db.Column(db.String(100), unique=True, index=True, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utcnow)
+    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
 
     def to_dict(self):
         return {
@@ -252,6 +257,8 @@ class Order(db.Model):
             'contact_phone': self.contact_phone,
             'customer_notes': self.customer_notes,
             'prescription_id': self.prescription_id,
+            'prescription_status': self.prescription.status if self.prescription else None,
+            'prescription_review_notes': self.prescription.review_notes if self.prescription else None,
             'prescription_pending_at_pickup': self.prescription_pending_at_pickup,
             'idempotency_key': self.idempotency_key,
             'created_at': self.created_at.isoformat() if self.created_at else None,
@@ -268,7 +275,7 @@ class Notification(db.Model):
     message = db.Column(db.Text, nullable=False)
     is_read = db.Column(db.Boolean, default=False)
     order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utcnow)
 
     def to_dict(self):
         return {
@@ -305,8 +312,8 @@ class MedicineRequest(db.Model):
     status = db.Column(db.String(20), default='PENDING', nullable=False, index=True)
     # PENDING, ACKNOWLEDGED, FULFILLED, REJECTED
     pharmacy_response = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utcnow)
+    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
 
     def to_dict(self):
         medicine_name = None

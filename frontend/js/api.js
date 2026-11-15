@@ -55,6 +55,8 @@ const API = {
     },
 
     logout() {
+        sessionStorage.removeItem('medifind_pickup_session');
+        sessionStorage.removeItem('medifind_delivery_session');
         return this.post('/api/auth/logout', {});
     }
 };

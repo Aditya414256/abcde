@@ -81,7 +81,7 @@ class PharmacyService:
         result = []
         for p in pharmacies:
             data = p.to_dict()
-            if user_lat is not None and user_lon is not None and p.latitude and p.longitude:
+            if user_lat is not None and user_lon is not None and p.latitude is not None and p.longitude is not None:
                 dist = LocationService.haversine_distance(user_lat, user_lon, p.latitude, p.longitude)
                 data['distance_km'] = dist
                 data['distance_text'] = LocationService.format_distance(dist)
@@ -106,7 +106,7 @@ class PharmacyService:
         result = []
         for p in pharmacies:
             data = p.to_dict()
-            if user_lat is not None and user_lon is not None and p.latitude and p.longitude:
+            if user_lat is not None and user_lon is not None and p.latitude is not None and p.longitude is not None:
                 dist = LocationService.haversine_distance(user_lat, user_lon, p.latitude, p.longitude)
                 data['distance_km'] = dist
                 data['distance_text'] = LocationService.format_distance(dist)

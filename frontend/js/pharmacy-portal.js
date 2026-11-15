@@ -10,16 +10,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     await loadPharmacyProfile();
     await loadPharmacyOrders();
+    if (new URLSearchParams(window.location.search).has('setup')) showTab('settings');
 });
 
 window.showTab = function(tabName) {
     document.getElementById('tab-orders').style.display = tabName === 'orders' ? 'block' : 'none';
     document.getElementById('tab-inventory').style.display = tabName === 'inventory' ? 'block' : 'none';
+    document.getElementById('tab-settings').style.display = tabName === 'settings' ? 'block' : 'none';
 
     if (tabName === 'inventory') {
         loadPharmacyInventory();
-    } else {
+    } else if (tabName === 'orders') {
         loadPharmacyOrders();
+    } else {
+        loadPharmacySettings();
     }
 };
 
@@ -87,8 +91,10 @@ window.loadPharmacyOrders = async function() {
                     <button class="login" style="padding:6px 14px; font-size:0.85rem; color:#ef4444;" onclick="updateOrderStatus(${o.id}, 'REJECTED')">Reject</button>
                 `;
             } else if (o.status === 'ACCEPTED') {
+                const needsReview = !isPickup && o.prescription_id && o.prescription_status !== 'APPROVED';
                 actionsHtml = `
-                    <button class="search-button" style="padding:6px 14px; font-size:0.85rem;" onclick="updateOrderStatus(${o.id}, 'CONFIRMED')">Confirm Order</button>
+                    <button class="search-button" ${needsReview ? 'disabled title="Approve the prescription first"' : ''} style="padding:6px 14px; font-size:0.85rem;" onclick="updateOrderStatus(${o.id}, 'CONFIRMED')">Confirm Order</button>
+                    <button class="login" onclick="updateOrderStatus(${o.id}, 'CANCELLED')">Cancel Order</button>
                 `;
             } else if (o.status === 'CONFIRMED') {
                 actionsHtml = `
@@ -116,8 +122,12 @@ window.loadPharmacyOrders = async function() {
                 ? `<div style="margin-top:10px; padding:10px; background:#fef3c7; border-radius:8px; font-size:0.85rem;">
                      📄 <strong>Prescription Attached:</strong>
                      <a href="/api/prescriptions/${o.prescription_id}/file" target="_blank" style="color:#b45309; text-decoration:underline; margin-left:6px; font-weight:600;">View File</a>
+                     <p>Status: ${escapeHtml(o.prescription_status || 'PENDING')}</p>
+                     ${o.prescription_review_notes ? `<p>${escapeHtml(o.prescription_review_notes)}</p>` : ''}
+                     ${o.prescription_status === 'PENDING' ? `<button class="login" onclick="reviewOrderPrescription(${o.prescription_id}, 'APPROVED')">Approve Prescription</button>
+                     <button class="login" onclick="reviewOrderPrescription(${o.prescription_id}, 'REJECTED')">Reject Prescription</button>` : ''}
                    </div>`
-                : '';
+                : (o.prescription_pending_at_pickup ? '<p style="color:#b45309;">Verify the customer’s physical prescription before dispensing at pickup.</p>' : '');
 
             return `
                 <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:20px 24px; box-shadow:0 2px 6px rgba(0,0,0,0.03);">
@@ -166,6 +176,16 @@ window.updateOrderStatus = async function(orderId, newStatus) {
     } catch (err) {
         alert('Failed to update status: ' + err.message);
     }
+};
+
+window.reviewOrderPrescription = async function(id, status) {
+    const notes = status === 'REJECTED' ? prompt('Reason for rejecting this prescription:') : null;
+    if (status === 'REJECTED' && !notes?.trim()) return;
+    if (status === 'APPROVED' && !confirm('Have you reviewed the prescription file and confirmed it is valid?')) return;
+    try {
+        await API.post(`/api/pharmacy/prescriptions/${id}/review`, {status, notes});
+        await loadPharmacyOrders();
+    } catch (err) { alert(err.message); }
 };
 
 // Inventory Management

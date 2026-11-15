@@ -212,7 +212,9 @@ async function loadMedicineSelectionFlow(medicineId) {
         `;
 
         // Restore active pickup session if refreshing or returning to this medicine
-        await restorePickupSessionIfAny(parseInt(medicineId, 10));
+        if (!await restoreDeliverySession(Number(medicineId))) {
+            await restorePickupSessionIfAny(Number(medicineId));
+        }
 
     } catch (err) {
         container.innerHTML = `<div style="padding:40px; text-align:center; color:#ef4444;">Error loading medicine: ${escapeHtml(err.message)}</div>`;
@@ -344,6 +346,7 @@ async function restorePickupSessionIfAny(medicineId) {
 // STORE PICKUP FLOW — pharmacy listing + selection + confirmation
 // ==========================================
 async function handleStorePickup(medicineId) {
+    clearDeliverySession();
     const flowArea = document.getElementById('flow-content-area');
     if (!flowArea) return;
 
@@ -470,7 +473,7 @@ async function loadPickupPharmacyList(medicineId, userLat, userLon, quantity) {
 
                 <div style="display:flex; flex-direction:column; gap:14px;">
                     ${pharmacies.map(p => {
-                        const stockBadge = p.stock_status === 'IN_STOCK'
+                        const stockBadge = p.stock_status === 'AVAILABLE'
                             ? '<span style="background:#d1fae5; color:#065f46; padding:3px 10px; border-radius:999px; font-size:0.75rem; font-weight:700;">In Stock</span>'
                             : p.stock_status === 'LOW_STOCK'
                                 ? '<span style="background:#fef3c7; color:#92400e; padding:3px 10px; border-radius:999px; font-size:0.75rem; font-weight:700;">Low Stock</span>'
@@ -505,7 +508,7 @@ async function loadPickupPharmacyList(medicineId, userLat, userLon, quantity) {
                                     class="search-button"
                                     style="width:100%; padding:10px;"
                                     id="select-store-btn-${p.pharmacy_id}"
-                                    onclick="showPickupConfirmation(${medicineId}, ${p.pharmacy_id}, '${escapeHtml(p.pharmacy_name).replace(/'/g, "\\'")}', '${escapeHtml(p.address + ', ' + p.city).replace(/'/g, "\\'")}', ${p.unit_price}, ${userLat !== null && userLat !== undefined ? userLat : 'null'}, ${userLon !== null && userLon !== undefined ? userLon : 'null'}, ${requiresPrescription}, ${quantity || 1})"
+                                    data-pickup-store="${p.pharmacy_id}"
                                 >
                                     Select This Store
                                 </button>
@@ -515,6 +518,13 @@ async function loadPickupPharmacyList(medicineId, userLat, userLon, quantity) {
                 </div>
             </div>
         `;
+
+        flowArea.querySelectorAll('[data-pickup-store]').forEach(button => {
+            const p = pharmacies.find(store => store.pharmacy_id === Number(button.dataset.pickupStore));
+            button.addEventListener('click', () => showPickupConfirmation(
+                Number(medicineId), p.pharmacy_id, p.pharmacy_name, `${p.address}, ${p.city}`,
+                p.unit_price, userLat, userLon, requiresPrescription, quantity || 1));
+        });
 
     } catch (err) {
         flowArea.innerHTML = `
@@ -798,6 +808,8 @@ async function handleDeliveryChoice(medicineId) {
         return;
     }
 
+    _checkoutUserId = auth.user.id;
+
     // Capture the prescription flag in the local scope of this flow
     const requiresPrescription = _currentMedicineRequiresPrescription;
 
@@ -862,7 +874,7 @@ async function handleDeliveryChoice(medicineId) {
                 <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:20px;">
                     ${pharmacies.map(p => `
                         <div class="delivery-pharmacy-item" style="border:1px solid #e2e8f0; border-radius:12px; padding:16px 20px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; transition:all 0.15s ease;"
-                             onclick="showDeliveryForm(${medicineId}, ${p.pharmacy_id}, '${escapeHtml(p.pharmacy_name)}', ${p.unit_price}, ${p.delivery_fee}, ${requiresPrescription})">
+                             data-delivery-store="${p.pharmacy_id}" role="button" tabindex="0">
                             <div>
                                 <div style="font-weight:700; font-size:1.05rem; color:#0f172a; font-family:'Space Grotesk',sans-serif;">
                                     ${escapeHtml(p.pharmacy_name)}
@@ -882,6 +894,16 @@ async function handleDeliveryChoice(medicineId) {
             </div>
         `;
 
+        flowArea.querySelectorAll('[data-delivery-store]').forEach(button => {
+            const p = pharmacies.find(store => store.pharmacy_id === Number(button.dataset.deliveryStore));
+            const choose = () => showDeliveryForm(Number(medicineId), p.pharmacy_id,
+                p.pharmacy_name, p.unit_price, p.delivery_fee, requiresPrescription);
+            button.addEventListener('click', choose);
+            button.addEventListener('keydown', e => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(); }
+            });
+        });
+
     } catch (err) {
         flowArea.innerHTML = `<div style="padding:30px; text-align:center; color:#ef4444;">Error loading delivery pharmacies: ${escapeHtml(err.message)}</div>`;
     }
@@ -891,6 +913,14 @@ async function handleDeliveryChoice(medicineId) {
 window.showDeliveryForm = function(medicineId, pharmacyId, pharmacyName, unitPrice, deliveryFee, requiresPrescription) {
     const flowArea = document.getElementById('flow-content-area');
     if (!flowArea) return;
+
+    const previous = getDeliverySession();
+    const sameDraft = previous && previous.medicineId === Number(medicineId)
+        && previous.pharmacyId === Number(pharmacyId) && previous.userId === _checkoutUserId;
+    if (!sameDraft) clearDeliverySession();
+    saveDeliverySession({medicineId:Number(medicineId), pharmacyId:Number(pharmacyId),
+        pharmacyName, unitPrice, deliveryFee, requiresPrescription, userId:_checkoutUserId});
+    const draft = getDeliverySession();
 
     // Prescription section varies by whether the medicine requires one
     const prescriptionSection = requiresPrescription
@@ -903,7 +933,7 @@ window.showDeliveryForm = function(medicineId, pharmacyId, pharmacyName, unitPri
                 This medicine requires a valid prescription for home delivery.
                 Please upload a clear photo or PDF of your prescription.
             </div>
-            <input type="file" id="delivery-prescription" accept=".jpg,.jpeg,.png,.pdf" required
+            <input type="file" id="delivery-prescription" accept=".jpg,.jpeg,.png,.pdf"
                    style="width:100%; box-sizing:border-box; padding:8px 0; font-size:0.85rem;">
           </div>`
         : `<div class="form-group" style="margin-bottom:16px;">
@@ -968,65 +998,144 @@ window.showDeliveryForm = function(medicineId, pharmacyId, pharmacyName, unitPri
             </form>
         </div>
     `;
+    for (const field of ['address','phone','quantity','notes']) {
+        const input = document.getElementById(`delivery-${field}`);
+        input.value = draft[field] ?? (field === 'quantity' ? 1 : '');
+        input.addEventListener('input', () => saveDeliverySession({[field]:input.value}));
+    }
+    document.getElementById('delivery-prescription').addEventListener('change', () => {
+        saveDeliverySession({prescriptionId:null});
+    });
+    if (draft.prescriptionId) {
+        const notice = document.createElement('p');
+        notice.textContent = 'Your uploaded prescription is saved. Choose a file only to replace it.';
+        document.getElementById('delivery-prescription').after(notice);
+    }
+    if (draft.pending) setDeliveryPending(true);
+
 };
 
+let _checkoutUserId = null;
+let _deliverySubmitting = false;
+let _deliveryMemory = null;
+const DELIVERY_SESSION_KEY = 'medifind_delivery_session';
+function getDeliverySession() {
+    try { return JSON.parse(sessionStorage.getItem(DELIVERY_SESSION_KEY)) || _deliveryMemory; }
+    catch (_) { return _deliveryMemory; }
+}
+function saveDeliverySession(values) {
+    _deliveryMemory = Object.assign({}, getDeliverySession() || {}, values);
+    try { sessionStorage.setItem(DELIVERY_SESSION_KEY, JSON.stringify(_deliveryMemory)); } catch (_) {}
+}
+function clearDeliverySession() {
+    _deliveryMemory = null;
+    try { sessionStorage.removeItem(DELIVERY_SESSION_KEY); } catch (_) {}
+}
+function setDeliveryPending(pending) {
+    document.querySelectorAll('#delivery-order-form input, #delivery-order-form textarea').forEach(el => {
+        el.disabled = pending;
+    });
+}
+function finishDelivery(order) {
+    saveDeliverySession({orderId:order.id, pending:false});
+    renderDeliveryConfirmation(order);
+}
+async function restoreDeliverySession(medicineId) {
+    const draft = getDeliverySession();
+    if (!draft || draft.medicineId !== medicineId) return false;
+    const auth = await API.getCurrentUser().catch(() => null);
+    if (!auth?.authenticated || auth.user.id !== draft.userId) { clearDeliverySession(); return false; }
+    _checkoutUserId = auth.user.id;
+    if (draft.orderId || (draft.pending && draft.idempotencyKey)) {
+        try {
+            const res = await API.get(draft.orderId ? `/api/orders/${draft.orderId}`
+                : `/api/orders/by-idempotency/${encodeURIComponent(draft.idempotencyKey)}`);
+            if (res.order) { finishDelivery(res.order); return true; }
+        } catch (err) {
+            if (err.status === 401 || err.status === 403) { clearDeliverySession(); return false; }
+            if (draft.orderId) {
+                document.getElementById('flow-content-area').textContent =
+                    'Could not restore your order confirmation. Check My Orders or refresh to try again.';
+                return true;
+            }
+        }
+    }
+    showDeliveryForm(draft.medicineId,draft.pharmacyId,draft.pharmacyName,
+        draft.unitPrice,draft.deliveryFee,draft.requiresPrescription);
+    return true;
+}
 window.submitDeliveryOrder = async function(event, medicineId, pharmacyId, requiresPrescription) {
     event.preventDefault();
-
-    const address = document.getElementById('delivery-address').value.trim();
-    const phone = document.getElementById('delivery-phone').value.trim();
-    const quantity = parseInt(document.getElementById('delivery-quantity').value, 10) || 1;
-    const notes = document.getElementById('delivery-notes').value.trim();
-    const prescriptionInput = document.getElementById('delivery-prescription');
+    if (_deliverySubmitting) return;
     const submitBtn = document.getElementById('submit-delivery-btn');
     const errBox = document.getElementById('delivery-error-box');
-
+    const input = document.getElementById('delivery-prescription');
+    let draft = getDeliverySession() || {};
     errBox.style.display = 'none';
-
-    // Client-side guard: for Rx medicines, prescription file must be attached for delivery
-    if (requiresPrescription && (!prescriptionInput || !prescriptionInput.files || prescriptionInput.files.length === 0)) {
-        errBox.textContent = 'This medicine requires a prescription for home delivery. Please upload your prescription document.';
-        errBox.style.display = 'block';
-        return;
-    }
-
+    _deliverySubmitting = true;
     submitBtn.disabled = true;
     submitBtn.textContent = 'Processing Order...';
-
     try {
-        let prescriptionId = null;
-
-        // Upload prescription if attached
-        if (prescriptionInput && prescriptionInput.files && prescriptionInput.files.length > 0) {
-            const formData = new FormData();
-            formData.append('file', prescriptionInput.files[0]);
-            formData.append('pharmacy_id', pharmacyId);
-
-            const uploadRes = await fetch('/api/prescriptions/upload', {
-                method: 'POST',
-                body: formData,
-                credentials: 'same-origin'
-            });
-            const uploadData = await uploadRes.json();
-            if (!uploadRes.ok) throw new Error(uploadData.error || 'Failed to upload prescription');
-            prescriptionId = uploadData.prescription.id;
+        if (draft.pending && draft.idempotencyKey) {
+            try {
+                const found = await API.get(`/api/orders/by-idempotency/${encodeURIComponent(draft.idempotencyKey)}`);
+                if (found.order) { finishDelivery(found.order); return; }
+            } catch (err) { if (err.status !== 404) throw err; }
         }
-
-        const res = await API.post('/api/orders/create', {
-            pharmacy_id: pharmacyId,
-            medicine_id: medicineId,
-            quantity: quantity,
-            order_type: 'DELIVERY',
-            delivery_address: address,
-            contact_phone: phone,
-            customer_notes: notes,
-            prescription_id: prescriptionId
-        });
-
-        const order = res.order;
-        const flowArea = document.getElementById('flow-content-area');
-
-        // Requirement #11/13: Clear confirmation: "Your order has been placed."
+        let payload = draft.pending ? draft.payload : null;
+        if (!payload) {
+            const address = document.getElementById('delivery-address').value.trim();
+            const phone = document.getElementById('delivery-phone').value.trim();
+            const quantity = Number(document.getElementById('delivery-quantity').value);
+            const notes = document.getElementById('delivery-notes').value.trim();
+            if (!address || !phone || !Number.isInteger(quantity) || quantity < 1) {
+                throw new Error('Enter an address, phone number and whole-number quantity.');
+            }
+            let prescriptionId = draft.prescriptionId || null;
+            if (!prescriptionId && input?.files?.length) {
+                if (input.files[0].size > 10*1024*1024) throw new Error('Prescription must be smaller than 10 MB.');
+                const formData = new FormData();
+                formData.append('file',input.files[0]);
+                formData.append('pharmacy_id',pharmacyId);
+                const uploaded = await API.post('/api/prescriptions/upload',formData);
+                prescriptionId = uploaded.prescription.id;
+                saveDeliverySession({prescriptionId});
+            }
+            if (requiresPrescription && !prescriptionId) throw new Error('Upload your prescription for this delivery.');
+            payload = {pharmacy_id:Number(pharmacyId),medicine_id:Number(medicineId),quantity,
+                order_type:'DELIVERY',delivery_address:address,contact_phone:phone,
+                customer_notes:notes,prescription_id:prescriptionId};
+            const fingerprint=JSON.stringify(payload);
+            const idempotencyKey=draft.fingerprint===fingerprint && draft.idempotencyKey
+                ? draft.idempotencyKey : `mf_delivery_${crypto.randomUUID()}`;
+            payload.idempotency_key=idempotencyKey;
+            saveDeliverySession({payload,fingerprint,idempotencyKey,pending:true,address,phone,quantity,notes});
+        }
+        setDeliveryPending(true);
+        const res=await API.post('/api/orders/create',payload);
+        if (!res.order?.id) throw new Error('Order confirmation was not received. Retry to check the same order.');
+        finishDelivery(res.order);
+    } catch (err) {
+        draft=getDeliverySession() || {};
+        if (draft.pending && draft.idempotencyKey) {
+            try {
+                const found=await API.get(`/api/orders/by-idempotency/${encodeURIComponent(draft.idempotencyKey)}`);
+                if (found.order) { finishDelivery(found.order); return; }
+            } catch (_) {}
+        }
+        // A validation rejection is definitive; a timeout is not. Keep the original
+        // payload locked on uncertain failures so retry cannot create another order.
+        if (err.status >= 400 && err.status < 500) saveDeliverySession({pending:false});
+        const pending=!!getDeliverySession()?.pending;
+        setDeliveryPending(pending);
+        errBox.textContent=pending ? 'Confirmation is uncertain. Retry to check and submit the same order safely.' : err.message;
+        errBox.style.display='block';
+        submitBtn.disabled=false;
+        submitBtn.textContent=pending ? 'Retry Same Delivery Order' : 'Confirm & Place Delivery Order';
+    } finally { _deliverySubmitting=false; }
+};
+function renderDeliveryConfirmation(order) {
+    const flowArea = document.getElementById('flow-content-area');
         flowArea.innerHTML = `
             <div style="background:#ffffff; border:2px solid #059669; border-radius:16px; padding:35px 28px; text-align:center; font-family:'Plus Jakarta Sans',sans-serif; box-shadow:0 10px 25px rgba(5, 150, 105, 0.1);">
                 <div style="width:56px; height:56px; border-radius:50%; background:#d1fae5; color:#059669; display:flex; align-items:center; justify-content:center; font-size:1.8rem; margin:0 auto 16px;">
@@ -1053,7 +1162,7 @@ window.submitDeliveryOrder = async function(event, medicineId, pharmacyId, requi
                         <strong>Total Amount:</strong> ₹${order.total_amount.toFixed(2)} (inc. delivery fee)
                     </div>
                     <div style="font-size:0.9rem; color:#059669; font-weight:600;">
-                        <strong>Status:</strong> Order Placed (Pending Pharmacy Confirmation)
+                        <strong>Status:</strong> ${escapeHtml(order.status.replaceAll('_', ' '))}
                     </div>
                 </div>
 
@@ -1063,13 +1172,7 @@ window.submitDeliveryOrder = async function(event, medicineId, pharmacyId, requi
             </div>
         `;
 
-    } catch (err) {
-        errBox.textContent = err.message || 'Failed to place order.';
-        errBox.style.display = 'block';
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Confirm & Place Delivery Order';
-    }
-};
+}
 
 function renderLocationError(flowArea, message) {
     flowArea.innerHTML = `

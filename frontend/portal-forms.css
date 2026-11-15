@@ -1,0 +1,9 @@
+.portal-form { background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:24px; margin-bottom:24px; }
+.portal-form h2,.portal-form h3 { font-family:'Space Grotesk',sans-serif; margin-top:0; }
+.portal-form label { display:block; margin:14px 0; font-weight:600; color:#334155; }
+.portal-form input:not([type=checkbox]),.portal-form select,.portal-form textarea { display:block; width:100%; box-sizing:border-box; margin-top:6px; padding:10px 12px; border:1px solid #cbd5e1; border-radius:8px; font:inherit; }
+.portal-fields { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; }
+.portal-form button { margin:4px 8px 4px 0; }
+.portal-form [role=status] { min-height:1.3em; color:#0369a1; }
+button:disabled { opacity:.55; cursor:not-allowed; }
+#inventory-list-container { overflow-x:auto; }

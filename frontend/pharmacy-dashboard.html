@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="HomePage.css">
+    <link rel="stylesheet" href="portal-forms.css">
     <title>Pharmacy Dashboard - MediFind</title>
 </head>
 <body>
@@ -55,6 +56,7 @@
                 <button class="login" style="padding:0.5rem 1rem;" onclick="showTab('inventory')">
                     💊 Inventory
                 </button>
+                <button class="login" onclick="showTab('settings')">Store Settings</button>
             </div>
         </div>
 
@@ -87,6 +89,18 @@
                 </button>
             </div>
 
+            <form id="add-inventory-form" class="portal-form">
+                <h3>Add a medicine to your inventory</h3>
+                <label>Find a medicine <input id="inventory-search" type="search" placeholder="Search by medicine name" autocomplete="off"></label>
+                <button type="button" class="login" id="inventory-search-btn">Search Medicines</button>
+                <label>Medicine <select id="inventory-medicine" required><option value="">Search and select a medicine</option></select></label>
+                <div class="portal-fields">
+                    <label>Quantity <input id="inventory-quantity" type="number" min="0" step="1" required></label>
+                    <label>Price (₹) <input id="inventory-price" type="number" min="0" step="0.01" required></label>
+                </div>
+                <button class="search-button" type="submit">Add to Inventory</button>
+                <p id="inventory-message" role="status"></p>
+            </form>
             <div id="inventory-list-container" style="display:flex; flex-direction:column; gap:16px;">
                 <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:30px; text-align:center; color:#64748b;">
                     Loading inventory...
@@ -94,10 +108,37 @@
             </div>
         </section>
 
+        <section id="tab-settings" style="display:none;">
+            <form id="pharmacy-settings-form" class="portal-form">
+                <h2>Store location and services</h2>
+                <p>Set your store’s location so customers can see accurate distances.</p>
+                <button type="button" class="login" id="store-use-location">Use My Current Location</button>
+                <p>Use this button while at your pharmacy, or enter the store’s coordinates.</p>
+                <div class="portal-fields">
+                    <label>Latitude <input id="store-latitude" type="number" step="any" min="-90" max="90"></label>
+                    <label>Longitude <input id="store-longitude" type="number" step="any" min="-180" max="180"></label>
+                </div>
+                <label><input id="store-pickup" type="checkbox"> Offer pickup</label>
+                <label><input id="store-delivery" type="checkbox"> Offer delivery</label>
+                <label>Delivery fee (₹) <input id="store-delivery-fee" type="number" min="0" step="0.01" required></label>
+                <button type="submit" class="search-button">Save Store Settings</button>
+                <p id="settings-message" role="status"></p>
+            </form>
+            <form id="verification-upload-form" class="portal-form">
+                <h2>Pharmacy verification document</h2>
+                <p>Upload your drug license or registration document for the administrator to review.</p>
+                <a id="verification-view" href="/api/pharmacy/verification-doc" target="_blank" rel="noopener" hidden>View Uploaded Document</a>
+                <label>License document <input id="verification-file" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" required></label>
+                <button type="submit" class="search-button">Upload Document</button>
+                <p id="verification-message" role="status"></p>
+            </form>
+        </section>
+
     </main>
 
     <script src="js/api.js"></script>
     <script src="js/navbar.js"></script>
     <script src="js/pharmacy-portal.js"></script>
+    <script src="js/pharmacy-setup.js"></script>
 </body>
 </html>
