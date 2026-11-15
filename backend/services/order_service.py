@@ -57,6 +57,8 @@ class OrderService:
         if idempotency_key:
             existing_order = Order.query.filter_by(idempotency_key=idempotency_key).first()
             if existing_order:
+                if existing_order.customer_id != customer_id:
+                    raise ValueError('Idempotency key already belongs to a different customer.')
                 logger.info("Returning existing order %s for idempotency key %s",
                             existing_order.order_number, idempotency_key)
                 return existing_order
@@ -159,6 +161,8 @@ class OrderService:
             if idempotency_key:
                 existing_order = Order.query.filter_by(idempotency_key=idempotency_key).first()
                 if existing_order:
+                    if existing_order.customer_id != customer_id:
+                        raise ValueError('Idempotency key already belongs to a different customer.')
                     return existing_order
             raise
 
