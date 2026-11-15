@@ -18,6 +18,8 @@ def auto_pickup_order():
     """
     if not current_user.is_authenticated:
         return jsonify({'error': 'Please login to place an order.', 'require_login': True}), 401
+    if current_user.role != 'customer':
+        return jsonify({'error': 'Only customer accounts can place orders.'}), 403
 
     data = request.get_json() or {}
     medicine_id = data.get('medicine_id')
@@ -86,7 +88,13 @@ def get_pickup_pharmacies():
     medicine_id = request.args.get('medicine_id', type=int)
     user_lat = request.args.get('latitude', type=float)
     user_lon = request.args.get('longitude', type=float)
-    quantity = request.args.get('quantity', 1, type=int)
+    raw_quantity = request.args.get('quantity', '1')
+    try:
+        quantity = int(raw_quantity)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Quantity must be a valid integer.'}), 400
+    if quantity <= 0:
+        return jsonify({'error': 'Quantity must be greater than zero.'}), 400
 
     if not medicine_id:
         return jsonify({'error': 'Medicine ID is required.'}), 400
@@ -121,6 +129,8 @@ def create_pickup_order():
     """
     if not current_user.is_authenticated:
         return jsonify({'error': 'Please login to place an order.', 'require_login': True}), 401
+    if current_user.role != 'customer':
+        return jsonify({'error': 'Only customer accounts can place orders.'}), 403
 
     data = request.get_json() or {}
     pharmacy_id = data.get('pharmacy_id')
@@ -166,7 +176,13 @@ def get_delivery_pharmacies():
     medicine_id = request.args.get('medicine_id', type=int)
     user_lat = request.args.get('latitude', type=float)
     user_lon = request.args.get('longitude', type=float)
-    quantity = request.args.get('quantity', 1, type=int)
+    raw_quantity = request.args.get('quantity', '1')
+    try:
+        quantity = int(raw_quantity)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Quantity must be a valid integer.'}), 400
+    if quantity <= 0:
+        return jsonify({'error': 'Quantity must be greater than zero.'}), 400
 
     if not medicine_id:
         return jsonify({'error': 'Medicine ID is required.'}), 400
@@ -199,12 +215,16 @@ def create_delivery_order():
     """
     if not current_user.is_authenticated:
         return jsonify({'error': 'Please login to place an order.', 'require_login': True}), 401
+    if current_user.role != 'customer':
+        return jsonify({'error': 'Only customer accounts can place orders.'}), 403
 
     data = request.get_json() or {}
     pharmacy_id = data.get('pharmacy_id')
     medicine_id = data.get('medicine_id')
     quantity = data.get('quantity', 1)
     order_type = data.get('order_type', 'DELIVERY')
+    if order_type != 'DELIVERY':
+        return jsonify({'error': 'This endpoint only accepts delivery orders.'}), 400
     delivery_address = data.get('delivery_address')
     contact_phone = data.get('contact_phone')
     customer_notes = data.get('customer_notes')

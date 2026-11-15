@@ -34,6 +34,29 @@ try:
             return jsonify({'status': 'unhealthy', 'database': 'unavailable'}), 503
         return jsonify({'status': 'healthy', 'database': 'available'}), 200
 
+    @app.route('/api/health/storage', methods=['GET'])
+    def storage_health_check():
+        """Read-only check of private Supabase bucket access (no files changed)."""
+        from flask import jsonify
+        import urllib.request
+        from backend.services.supabase_storage_service import SupabaseStorageService
+        if not SupabaseStorageService.is_configured():
+            return jsonify({'status': 'unhealthy', 'storage': 'unavailable'}), 503
+        try:
+            base = SupabaseStorageService.get_base_url()
+            headers = SupabaseStorageService._get_headers()
+            for bucket in ('prescriptions', 'pharmacy-docs'):
+                req = urllib.request.Request(
+                    f'{base}/storage/v1/bucket/{bucket}', headers=headers, method='GET'
+                )
+                with urllib.request.urlopen(req, timeout=8) as response:
+                    if response.status != 200:
+                        raise RuntimeError('Private storage bucket access failed')
+        except Exception:
+            app.logger.exception('Supabase private bucket check failed')
+            return jsonify({'status': 'unhealthy', 'storage': 'unavailable'}), 503
+        return jsonify({'status': 'healthy', 'storage': 'available'}), 200
+
 except Exception as err:
     logging.exception('MediFind app initialization failed')
 

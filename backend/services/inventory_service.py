@@ -1,4 +1,6 @@
 from datetime import datetime, timezone
+import math
+from backend.models import Medicine
 from backend.models import PharmacyInventory
 from backend.database import db
 
@@ -25,8 +27,21 @@ class InventoryService:
         Recalculates stock status.
         Updates last_updated_at.
         """
+        try:
+            quantity = int(quantity)
+        except (ValueError, TypeError):
+            raise ValueError('Quantity must be a valid integer.')
         if quantity < 0:
             raise ValueError("Quantity cannot be negative.")
+        if price is not None:
+            try:
+                price = float(price)
+            except (ValueError, TypeError):
+                raise ValueError('Price must be a valid number.')
+            if not math.isfinite(price) or price < 0:
+                raise ValueError('Price must be finite and non-negative.')
+        if not db.session.get(Medicine, medicine_id):
+            raise ValueError('Medicine not found.')
 
         item = cls.get_stock(pharmacy_id, medicine_id)
         if not item:

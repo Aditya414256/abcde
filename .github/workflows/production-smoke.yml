@@ -45,6 +45,10 @@ jobs:
               time.sleep(10)
           assert healthy, 'Production backend health did not validate DB connectivity'
 
+          status, body = get('/api/health/storage')
+          assert status == 200 and body.get('status') == 'healthy' and body.get('storage') == 'available', 'Private Supabase storage unavailable'
+          print('Private Supabase Storage buckets: OK')
+
           status, body = get('/api/medicines/search?q=dolo')
           assert status == 200, f'Medicine search HTTP {status}'
           assert isinstance(body, dict), 'Medicine search did not return a JSON object'
