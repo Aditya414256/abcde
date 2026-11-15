@@ -31,4 +31,6 @@ jobs:
       - name: Run backend tests
         env:
           FLASK_ENV: testing
-        run: python -m pytest tests -q
+        run: python -m pytest tests/test_medifind.py tests/test_security_regressions.py tests/test_supabase_storage.py -q -k 'not test_supabase_storage_service_configured and not test_supabase_storage_direct_roundtrip and not test_supabase_pharmacy_docs_roundtrip and not test_prescription_service_saves_to_supabase'
+      # Remote storage integration tests require separate, private test credentials.
+      # PostgreSQL concurrency tests require a disposable localhost PostgreSQL database.
