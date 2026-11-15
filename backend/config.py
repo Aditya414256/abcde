@@ -22,7 +22,7 @@ class Config:
     """Base configuration. All sensitive values come from environment variables."""
 
     # SECRET_KEY: loaded from environment variable, with safe fallback if not yet set in Vercel.
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'medifind-production-fallback-key-secret-98234'
+    SECRET_KEY = os.environ.get('SECRET_KEY') or (None if os.environ.get('VERCEL') or os.environ.get('FLASK_ENV') == 'production' else 'local-development-only-change-me')
 
     # Database: defaults to local SQLite for development.
     # For production, set DATABASE_URL to a PostgreSQL connection string.
@@ -32,9 +32,8 @@ class Config:
     _raw_db_url = os.environ.get('DATABASE_URL')
     if _raw_db_url:
         SQLALCHEMY_DATABASE_URI = normalize_database_url(_raw_db_url)
-    elif os.environ.get('VERCEL'):
-        # On Vercel without DATABASE_URL, fallback to writable /tmp for SQLite
-        SQLALCHEMY_DATABASE_URI = 'sqlite:////tmp/medifind.db'
+    elif os.environ.get('VERCEL') or os.environ.get('FLASK_ENV') == 'production':
+        raise RuntimeError('DATABASE_URL is required in production; refusing ephemeral SQLite.')
     else:
         SQLALCHEMY_DATABASE_URI = f"sqlite:///{os.path.join(BASE_DIR, 'medifind.db')}"
 
@@ -71,7 +70,7 @@ class Config:
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
     # Set SESSION_COOKIE_SECURE = True in production (requires HTTPS)
-    SESSION_COOKIE_SECURE = os.environ.get('FLASK_ENV') == 'production'
+    SESSION_COOKIE_SECURE = bool(os.environ.get('VERCEL')) or os.environ.get('FLASK_ENV') == 'production'
 
 
 class DevelopmentConfig(Config):
