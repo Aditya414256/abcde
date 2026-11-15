@@ -408,6 +408,10 @@ class OrderService:
         # ACCEPTED → CONFIRMED: deduct stock atomically with row-level lock
         # -------------------------------------------------------------------
         if current_status == 'ACCEPTED' and new_status == 'CONFIRMED':
+            # Delivery prescription orders cannot proceed without manual approval.
+            if order.order_type == 'DELIVERY' and order.medicine.requires_prescription:
+                if not order.prescription or order.prescription.status != 'APPROVED':
+                    raise ValueError('Prescription must be approved before confirming this delivery order.')
             inv = PharmacyInventory.query.filter_by(
                 pharmacy_id=order.pharmacy_id,
                 medicine_id=order.medicine_id,
