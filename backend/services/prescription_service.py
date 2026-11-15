@@ -42,6 +42,8 @@ class PrescriptionService:
                 dest_filename=unique_filename
             )
         else:
+            if os.environ.get('VERCEL') or os.environ.get('FLASK_ENV') == 'production':
+                raise RuntimeError('Supabase Storage must be configured for prescription uploads in production.')
             os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
             stored_path = os.path.join(Config.UPLOAD_FOLDER, unique_filename)
             file_storage.save(stored_path)
@@ -139,8 +141,15 @@ class PrescriptionService:
         if not prescription:
             raise ValueError("Prescription not found.")
 
-        if not cls.check_access_permission(prescription, reviewer_user):
-            raise PermissionError("Unauthorized to review this prescription.")
+        if not reviewer_user or not reviewer_user.is_authenticated:
+            raise PermissionError('Authentication required to review prescriptions.')
+        if reviewer_user.role == 'admin':
+            pass
+        elif reviewer_user.role == 'pharmacy':
+            if not cls.check_access_permission(prescription, reviewer_user):
+                raise PermissionError('Unauthorized to review this prescription.')
+        else:
+            raise PermissionError('Only pharmacy owners and admins can review prescriptions.')
 
         if status not in ('APPROVED', 'REJECTED'):
             raise ValueError("Status must be either APPROVED or REJECTED.")
