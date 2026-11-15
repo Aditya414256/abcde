@@ -88,7 +88,13 @@ def get_pickup_pharmacies():
     medicine_id = request.args.get('medicine_id', type=int)
     user_lat = request.args.get('latitude', type=float)
     user_lon = request.args.get('longitude', type=float)
-    quantity = request.args.get('quantity', 1, type=int)
+    raw_quantity = request.args.get('quantity', '1')
+    try:
+        quantity = int(raw_quantity)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Quantity must be a valid integer.'}), 400
+    if quantity <= 0:
+        return jsonify({'error': 'Quantity must be greater than zero.'}), 400
 
     if not medicine_id:
         return jsonify({'error': 'Medicine ID is required.'}), 400
@@ -170,7 +176,13 @@ def get_delivery_pharmacies():
     medicine_id = request.args.get('medicine_id', type=int)
     user_lat = request.args.get('latitude', type=float)
     user_lon = request.args.get('longitude', type=float)
-    quantity = request.args.get('quantity', 1, type=int)
+    raw_quantity = request.args.get('quantity', '1')
+    try:
+        quantity = int(raw_quantity)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Quantity must be a valid integer.'}), 400
+    if quantity <= 0:
+        return jsonify({'error': 'Quantity must be greater than zero.'}), 400
 
     if not medicine_id:
         return jsonify({'error': 'Medicine ID is required.'}), 400
