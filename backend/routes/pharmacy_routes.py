@@ -188,6 +188,8 @@ def upload_verification_doc():
                 dest_filename=unique_filename
             )
         else:
+            if os.environ.get('VERCEL') or os.environ.get('FLASK_ENV') == 'production':
+                return jsonify({'error': 'Persistent document storage is not configured.'}), 503
             # Local filesystem fallback
             doc_folder = os.path.join(os.path.dirname(Config.UPLOAD_FOLDER), 'pharmacy_docs')
             os.makedirs(doc_folder, exist_ok=True)
@@ -213,7 +215,7 @@ def upload_verification_doc():
 
     except Exception as e:
         logger.exception("Failed to save verification document for pharmacy %s: %s", pharmacy.id, e)
-        return jsonify({'error': f'Failed to save document: {str(e)}'}), 500
+        return jsonify({'error': 'Failed to save document.'}), 500
 
 
 @pharmacy_bp.route('/pharmacy/verification-doc', methods=['GET'])
