@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - fix/security-production-hardening-20261115
+      - fix/end-to-end-reliability-20261115
   pull_request:
     branches:
       - main
