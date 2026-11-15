@@ -1,0 +1,61 @@
+name: MediFind production smoke test
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Verify production health and public endpoints
+        env:
+          MEDIFIND_BASE_URL: https://medifind-xpro4.vercel.app
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import time
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+
+          base = os.environ['MEDIFIND_BASE_URL'].rstrip('/')
+          def get(path):
+              with urllib.request.urlopen(urllib.request.Request(base+path, headers={'User-Agent':'MediFind-CI-smoke/1.0'}), timeout=20) as response:
+                  data = response.read(2_000_000)
+                  return response.status, json.loads(data.decode('utf-8'))
+
+          # Wait for the newly deployed backend health-check semantics, not an earlier build.
+          healthy = False
+          for attempt in range(24):
+              try:
+                  status, body = get('/api/health')
+                  if status == 200 and body.get('status') == 'healthy' and body.get('database') == 'available':
+                      healthy = True
+                      break
+              except (urllib.error.URLError, ValueError, TimeoutError) as exc:
+                  print('Waiting for production:', str(exc)[:120])
+              time.sleep(10)
+          assert healthy, 'Production backend health did not validate DB connectivity'
+
+          status, body = get('/api/medicines/search?q=dolo')
+          assert status == 200, f'Medicine search HTTP {status}'
+          assert isinstance(body, dict), 'Medicine search did not return a JSON object'
+          print('Medicine search: OK')
+
+          status, body = get('/api/pharmacies')
+          assert status == 200, f'Pharmacy listing HTTP {status}'
+          assert isinstance(body.get('pharmacies'), list), 'Expected pharmacies array'
+          print('Pharmacy directory: OK, entries:', len(body['pharmacies']))
+
+          status, body = get('/api/auth/current-user')
+          assert status == 200 and isinstance(body, dict), 'Anonymous current-user endpoint malformed'
+          print('Anonymous user endpoint: OK')
+          PY
