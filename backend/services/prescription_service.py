@@ -162,7 +162,7 @@ class PrescriptionService:
 
         # Lock the same order rows used by confirmation before changing approval.
         # Never revoke a prescription after an associated delivery is confirmed.
-        linked_orders = Order.query.filter_by(prescription_id=prescription.id).with_for_update().all()
+        linked_orders = Order.query.filter_by(prescription_id=prescription.id).order_by(Order.id).populate_existing().with_for_update().all()
         if status == 'REJECTED' and any(o.order_type == 'DELIVERY' and o.status in
                 ('CONFIRMED', 'PREPARING', 'OUT_FOR_DELIVERY', 'COMPLETED') for o in linked_orders):
             raise ValueError('Cannot reject a prescription after its delivery order is confirmed.')

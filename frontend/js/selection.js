@@ -347,6 +347,8 @@ async function restorePickupSessionIfAny(medicineId) {
 // ==========================================
 async function handleStorePickup(medicineId) {
     clearDeliverySession();
+    const previousPickup = getPickupSession();
+    if (previousPickup?.step === 'ORDER_CONFIRMED' || (previousPickup && previousPickup.medicineId !== Number(medicineId))) clearPickupSession();
     const flowArea = document.getElementById('flow-content-area');
     if (!flowArea) return;
 
@@ -560,7 +562,8 @@ window.showPickupConfirmation = function(medicineId, pharmacyId, pharmacyName, p
     const notesValue = savedNotes !== undefined ? savedNotes : (existingSession.notes || '');
 
     // Reuse existing idempotency key or generate a fresh one
-    const idempotencyKey = existingSession.idempotencyKey || generateIdempotencyKey();
+    const sameSelection = existingSession.medicineId === Number(medicineId) && existingSession.pharmacyId === Number(pharmacyId);
+    const idempotencyKey = (sameSelection && existingSession.idempotencyKey) || generateIdempotencyKey();
 
     savePickupSession({
         step: 'CONFIRMATION',
@@ -798,6 +801,7 @@ function renderPickupOrderConfirmation(order) {
 // ==========================================
 async function handleDeliveryChoice(medicineId) {
     clearPickupSession();
+    if (getDeliverySession()?.orderId) clearDeliverySession();
     const flowArea = document.getElementById('flow-content-area');
     if (!flowArea) return;
 

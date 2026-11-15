@@ -113,3 +113,25 @@ test('untrusted store names remain text and cannot execute click-handler code',a
     await expect(page.locator('#delivery-order-form')).toBeVisible();
     expect(await page.evaluate(()=>window.auditMarker)).toBeUndefined();
 });
+
+test('prescription pickup needs no upload, restores on refresh and permits a new order',async ({page})=> {
+    await login(page,'customer');
+    await page.goto('/FindMedi.html?medicine_id=5');
+    await page.locator('#choice-store-card').click();
+    await page.locator('[data-pickup-store="1"]').click();
+    await expect(page.locator('input[type=file]')).toHaveCount(0);
+    await page.locator('#pickup-notes').fill('Browser pickup repeat');
+    await page.locator('#confirm-pickup-btn').click();
+    await expect(page.getByRole('heading',{name:'Your order has been placed.',exact:true})).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole('heading',{name:'Your order has been placed.',exact:true})).toBeVisible();
+    await page.locator('#choice-store-card').click();
+    await page.locator('[data-pickup-store="1"]').click();
+    await page.locator('#pickup-notes').fill('Browser pickup repeat');
+    await page.locator('#confirm-pickup-btn').click();
+    await expect(page.getByRole('heading',{name:'Your order has been placed.',exact:true})).toBeVisible();
+    const {orders}=await (await page.request.get('/api/orders/my-orders')).json();
+    const matches=orders.filter(o=>o.customer_notes==='Browser pickup repeat');
+    expect(matches).toHaveLength(2);
+    expect(matches[0].idempotency_key).not.toBe(matches[1].idempotency_key);
+});
