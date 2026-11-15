@@ -33,6 +33,8 @@ def mark_notification_read(notification_id):
 def upload_prescription():
     if not current_user.is_authenticated:
         return jsonify({'error': 'Please login to upload a prescription.'}), 401
+    if current_user.role != 'customer':
+        return jsonify({'error': 'Only customers can upload prescriptions.'}), 403
 
     if 'file' not in request.files:
         return jsonify({'error': 'No file uploaded.'}), 400
