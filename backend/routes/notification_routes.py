@@ -84,4 +84,4 @@ def get_prescription_file(prescription_id):
     except FileNotFoundError:
         return jsonify({'error': 'File not found on storage or server.'}), 404
     except Exception as e:
-        return jsonify({'error': f'Failed to retrieve prescription file: {str(e)}'}), 500
+        return jsonify({'error': 'Failed to retrieve prescription file.'}), 500
