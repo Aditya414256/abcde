@@ -87,9 +87,19 @@ def register_pharmacy():
         db.session.add(user)
         db.session.flush()
 
-        # Seed with coordinates based on known city or default
-        lat = data.get('latitude', 12.9716) # Default Bangalore or provided
-        lon = data.get('longitude', 77.5946)
+        # Never invent Bangalore coordinates for pharmacies registered elsewhere.
+        # Unknown coordinates remain null until the pharmacy supplies its location.
+        lat = data.get('latitude')
+        lon = data.get('longitude')
+        if lat in ('', None) or lon in ('', None):
+            lat, lon = None, None
+        else:
+            try:
+                lat, lon = float(lat), float(lon)
+                if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+                    raise ValueError('Coordinates are out of range.')
+            except (TypeError, ValueError):
+                raise ValueError('Invalid pharmacy coordinates.')
 
         pharmacy = PharmacyService.register_pharmacy(
             owner_id=user.id,
