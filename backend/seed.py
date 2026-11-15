@@ -56,6 +56,8 @@ def ensure_schema_migrations():
         print(f"Schema migration note: {e}")
 
 def seed_database(app=None):
+    if os.environ.get('VERCEL') or os.environ.get('FLASK_ENV') == 'production':
+        raise RuntimeError('Demo data seeding is forbidden in production.')
     if app is None:
         app = create_app()
     with app.app_context():
