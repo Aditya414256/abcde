@@ -53,12 +53,26 @@ class OrderService:
 
         Idempotency prevents duplicate orders on network retries.
         """
+        # A retry token is valid only for the exact same customer request.
+        # Reject changed quantities/addresses rather than returning an unrelated order.
+        def validate_retry(order):
+            if order.customer_id != customer_id:
+                raise ValueError('Idempotency key already belongs to a different customer.')
+            if (str(order.pharmacy_id) != str(pharmacy_id)
+                    or str(order.medicine_id) != str(medicine_id)
+                    or str(order.quantity) != str(quantity)
+                    or order.order_type != order_type
+                    or (order.delivery_address or '') != (delivery_address or '')
+                    or (order.contact_phone or '') != (contact_phone or '')
+                    or (order.customer_notes or '') != (customer_notes or '')
+                    or str(order.prescription_id or '') != str(prescription_id or '')):
+                raise ValueError('Idempotency key already used for a different order.')
+
         # Idempotency check — must be the very first thing before any mutation
         if idempotency_key:
             existing_order = Order.query.filter_by(idempotency_key=idempotency_key).first()
             if existing_order:
-                if existing_order.customer_id != customer_id:
-                    raise ValueError('Idempotency key already belongs to a different customer.')
+                validate_retry(existing_order)
                 logger.info("Returning existing order %s for idempotency key %s",
                             existing_order.order_number, idempotency_key)
                 return existing_order
@@ -112,6 +126,10 @@ class OrderService:
             prescription = db.session.get(Prescription, prescription_id)
             if not prescription or prescription.customer_id != customer_id:
                 raise ValueError("Invalid prescription provided.")
+            if prescription.pharmacy_id is not None and prescription.pharmacy_id != pharmacy_id:
+                raise ValueError('Prescription belongs to a different pharmacy.')
+            if prescription.status == 'REJECTED':
+                raise ValueError('Rejected prescriptions cannot be used for new orders.')
 
         # Check that inventory exists for price calculation.
         # NOTE: Stock is NOT deducted here. Deduction occurs on ACCEPTED → CONFIRMED.
@@ -161,8 +179,7 @@ class OrderService:
             if idempotency_key:
                 existing_order = Order.query.filter_by(idempotency_key=idempotency_key).first()
                 if existing_order:
-                    if existing_order.customer_id != customer_id:
-                        raise ValueError('Idempotency key already belongs to a different customer.')
+                    validate_retry(existing_order)
                     return existing_order
             raise
 
@@ -321,6 +338,13 @@ class OrderService:
         medicine = db.session.get(Medicine, medicine_id)
         if not medicine:
             raise ValueError("Medicine not found.")
+
+        try:
+            quantity = int(quantity)
+        except (TypeError, ValueError):
+            raise ValueError('Quantity must be a valid integer.')
+        if quantity <= 0:
+            raise ValueError('Quantity must be greater than zero.')
 
         inventories = PharmacyInventory.query.filter(
             PharmacyInventory.medicine_id == medicine_id,
