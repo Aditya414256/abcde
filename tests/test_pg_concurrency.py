@@ -230,8 +230,11 @@ def test_no_overselling(app, seed, results: ConcurrencyTestResults):
             results.skipped.append(f"{test_name} (could not create second order)")
             return
 
-    t1 = threading.Thread(target=try_confirm, args=(order1.id, seed['owner_id']))
-    t2 = threading.Thread(target=try_confirm, args=(order2.id, seed['owner_id']))
+        # Save scalar IDs while ORM instances are still session-bound.
+        order1_id, order2_id = order1.id, order2.id
+
+    t1 = threading.Thread(target=try_confirm, args=(order1_id, seed['owner_id']))
+    t2 = threading.Thread(target=try_confirm, args=(order2_id, seed['owner_id']))
     t1.start()
     t2.start()
     t1.join(timeout=30)
