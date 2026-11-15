@@ -97,9 +97,9 @@ def register_pharmacy():
             try:
                 lat, lon = float(lat), float(lon)
                 if not (-90 <= lat <= 90 and -180 <= lon <= 180):
-                    raise ValueError('Coordinates are out of range.')
+                    return jsonify({'error': 'Pharmacy coordinates are out of range.'}), 400
             except (TypeError, ValueError):
-                raise ValueError('Invalid pharmacy coordinates.')
+                return jsonify({'error': 'Invalid pharmacy coordinates.'}), 400
 
         pharmacy = PharmacyService.register_pharmacy(
             owner_id=user.id,
