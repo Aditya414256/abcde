@@ -3,7 +3,7 @@ Vercel serverless entry point for MediFind Flask application.
 """
 import sys
 import os
-import traceback
+import logging
 
 # Ensure the project root is on the Python path
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -12,7 +12,6 @@ if ROOT_DIR not in sys.path:
 
 app = None
 init_error = None
-init_traceback = None
 
 try:
     from backend.app import create_app
@@ -27,21 +26,16 @@ try:
     def health_check():
         from flask import jsonify
         db_status = 'unknown'
-        user_count = 0
         try:
             db_status = db.engine.dialect.name
-            user_count = User.query.count()
-        except Exception as e:
-            db_status = f'error: {e}'
-        return jsonify({
-            'status': 'healthy',
-            'dialect': db_status,
-            'users_seeded': user_count
-        }), 200
+            User.query.limit(1).all()
+        except Exception:
+            app.logger.exception('Database health check failed')
+            return jsonify({'status': 'unhealthy', 'database': 'unavailable'}), 503
+        return jsonify({'status': 'healthy', 'database': 'available'}), 200
 
 except Exception as err:
-    init_error = str(err)
-    init_traceback = traceback.format_exc()
+    logging.exception('MediFind app initialization failed')
 
 if app is None:
     from flask import Flask, jsonify
@@ -51,7 +45,5 @@ if app is None:
     @app.route('/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE', 'PATCH'])
     def initialization_failure(path):
         return jsonify({
-            'error': 'Application initialization failed',
-            'message': init_error,
-            'traceback': init_traceback
+            'error': 'Application initialization failed'
         }), 500
