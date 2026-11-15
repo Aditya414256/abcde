@@ -18,6 +18,8 @@ def auto_pickup_order():
     """
     if not current_user.is_authenticated:
         return jsonify({'error': 'Please login to place an order.', 'require_login': True}), 401
+    if current_user.role != 'customer':
+        return jsonify({'error': 'Only customer accounts can place orders.'}), 403
 
     data = request.get_json() or {}
     medicine_id = data.get('medicine_id')
@@ -121,6 +123,8 @@ def create_pickup_order():
     """
     if not current_user.is_authenticated:
         return jsonify({'error': 'Please login to place an order.', 'require_login': True}), 401
+    if current_user.role != 'customer':
+        return jsonify({'error': 'Only customer accounts can place orders.'}), 403
 
     data = request.get_json() or {}
     pharmacy_id = data.get('pharmacy_id')
@@ -199,12 +203,16 @@ def create_delivery_order():
     """
     if not current_user.is_authenticated:
         return jsonify({'error': 'Please login to place an order.', 'require_login': True}), 401
+    if current_user.role != 'customer':
+        return jsonify({'error': 'Only customer accounts can place orders.'}), 403
 
     data = request.get_json() or {}
     pharmacy_id = data.get('pharmacy_id')
     medicine_id = data.get('medicine_id')
     quantity = data.get('quantity', 1)
     order_type = data.get('order_type', 'DELIVERY')
+    if order_type != 'DELIVERY':
+        return jsonify({'error': 'This endpoint only accepts delivery orders.'}), 400
     delivery_address = data.get('delivery_address')
     contact_phone = data.get('contact_phone')
     customer_notes = data.get('customer_notes')
