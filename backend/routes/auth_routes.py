@@ -3,6 +3,8 @@ from flask_login import login_user, logout_user, login_required, current_user
 from backend.models import User
 from backend.services.pharmacy_service import PharmacyService
 from backend.database import db
+from backend.validation import coordinates
+from sqlalchemy.exc import IntegrityError
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
@@ -36,7 +38,11 @@ def register_customer():
     )
     user.set_password(password)
     db.session.add(user)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({'error': 'An account with this email already exists.'}), 409
 
     login_user(user)
     return jsonify({
@@ -72,10 +78,14 @@ def register_pharmacy():
     if password != confirm_password:
         return jsonify({'error': 'Passwords do not match.'}), 400
 
+    if len(password) < 6:
+        return jsonify({'error': 'Password must be at least 6 characters.'}), 400
+
     existing_user = User.query.filter_by(email=email).first()
     if existing_user:
         return jsonify({'error': 'An account with this email already exists.'}), 409
 
+    lat, lon = coordinates(data.get('latitude'), data.get('longitude'))
     try:
         user = User(
             email=email,
@@ -89,18 +99,6 @@ def register_pharmacy():
 
         # Never invent Bangalore coordinates for pharmacies registered elsewhere.
         # Unknown coordinates remain null until the pharmacy supplies its location.
-        lat = data.get('latitude')
-        lon = data.get('longitude')
-        if lat in ('', None) or lon in ('', None):
-            lat, lon = None, None
-        else:
-            try:
-                lat, lon = float(lat), float(lon)
-                if not (-90 <= lat <= 90 and -180 <= lon <= 180):
-                    return jsonify({'error': 'Pharmacy coordinates are out of range.'}), 400
-            except (TypeError, ValueError):
-                return jsonify({'error': 'Invalid pharmacy coordinates.'}), 400
-
         pharmacy = PharmacyService.register_pharmacy(
             owner_id=user.id,
             name=pharmacy_name,
@@ -123,12 +121,15 @@ def register_pharmacy():
             'message': 'Pharmacy registered successfully. Your account is pending admin verification.',
             'user': user.to_dict(),
             'pharmacy': pharmacy.to_dict(),
-            'redirect_url': 'pharmacy-dashboard.html'
+            'redirect_url': 'pharmacy-dashboard.html?setup=1'
         }), 201
 
     except ValueError as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 400
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({'error': 'Email or license number is already registered.'}), 409
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': 'Registration failed. Please check your information.'}), 500
@@ -204,14 +205,6 @@ def update_profile():
 
     updated = False
 
-    if full_name:
-        current_user.full_name = full_name
-        updated = True
-
-    if phone is not None and phone != current_user.phone:
-        current_user.phone = phone or None
-        updated = True
-
     # Password change — only attempted when new_password is supplied
     if new_password:
         if not current_password:
@@ -223,6 +216,13 @@ def update_profile():
         if new_password != confirm_password:
             return jsonify({'error': 'New passwords do not match.'}), 400
         current_user.set_password(new_password)
+        updated = True
+
+    if full_name:
+        current_user.full_name = full_name
+        updated = True
+    if 'phone' in data and phone != current_user.phone:
+        current_user.phone = phone or None
         updated = True
 
     if not updated:

@@ -1,0 +1,13 @@
+const {defineConfig} = require('@playwright/test');
+module.exports = defineConfig({
+    testDir: './tests/browser',
+    workers: 1,
+    timeout: 45000,
+    use: {baseURL:'http://127.0.0.1:5056', screenshot:'only-on-failure', trace:'retain-on-failure'},
+    webServer: {
+        command: `${process.env.TEST_PYTHON || 'python'} tests/browser_server.py`,
+        url: 'http://127.0.0.1:5056',
+        reuseExistingServer: false,
+        timeout: 30000
+    }
+});

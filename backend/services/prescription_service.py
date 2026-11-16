@@ -154,27 +154,37 @@ class PrescriptionService:
         if status not in ('APPROVED', 'REJECTED'):
             raise ValueError("Status must be either APPROVED or REJECTED.")
 
+        if notes is not None and not isinstance(notes, str):
+            raise ValueError('Review notes must be text.')
+        notes = notes.strip() if notes else None
         if status == 'REJECTED' and not notes:
             raise ValueError("A reason is required when rejecting a prescription.")
 
+        # Lock the same order rows used by confirmation before changing approval.
+        # Never revoke a prescription after an associated delivery is confirmed.
+        linked_orders = Order.query.filter_by(prescription_id=prescription.id).order_by(Order.id).populate_existing().with_for_update().all()
+        if status == 'REJECTED' and any(o.order_type == 'DELIVERY' and o.status in
+                ('CONFIRMED', 'PREPARING', 'OUT_FOR_DELIVERY', 'COMPLETED') for o in linked_orders):
+            raise ValueError('Cannot reject a prescription after its delivery order is confirmed.')
         prescription.status = status
         prescription.review_notes = notes
+        rejected_orders = []
+        if status == 'REJECTED':
+            for order in linked_orders:
+                if order.order_type == 'DELIVERY' and order.status in ('PENDING', 'ACCEPTED'):
+                    order.status = 'REJECTED'
+                    rejected_orders.append(order)
         db.session.commit()
 
         # On rejection: reject related PENDING delivery orders and notify the customer
         if status == 'REJECTED':
-            related_orders = Order.query.filter_by(
-                prescription_id=prescription.id
-            ).filter(Order.status == 'PENDING').all()
+            related_orders = rejected_orders
 
             for order in related_orders:
                 try:
                     # Only auto-reject delivery orders waiting on this prescription
                     if order.order_type == 'DELIVERY':
-                        allowed = OrderService.ALLOWED_TRANSITIONS.get(order.status, [])
-                        if 'REJECTED' in allowed:
-                            order.status = 'REJECTED'
-                            db.session.commit()
+                        if order.status == 'REJECTED':
                             NotificationService.create_notification(
                                 user_id=order.customer_id,
                                 title="Order Update: Your order was not taken.",

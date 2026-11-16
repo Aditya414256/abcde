@@ -1,5 +1,6 @@
 import os
-from flask import Flask, send_from_directory, jsonify
+from flask import Flask, send_from_directory, jsonify, request
+from werkzeug.exceptions import HTTPException
 from flask_login import LoginManager
 from flask_migrate import Migrate
 from backend.config import Config, BASE_DIR
@@ -11,6 +12,22 @@ def create_app(config_class=Config):
     frontend_folder = os.path.join(BASE_DIR, 'frontend')
     app = Flask(__name__, static_folder=frontend_folder, static_url_path='')
     app.config.from_object(config_class)
+    app.config['MAX_CONTENT_LENGTH'] = app.config.get('MAX_CONTENT_LENGTH') or 10 * 1024 * 1024
+
+    @app.before_request
+    def validate_api_json():
+        if request.path.startswith('/api/') and ('latitude' in request.args or 'longitude' in request.args):
+            from backend.validation import coordinates
+            coordinates(request.args.get('latitude'), request.args.get('longitude'))
+        if request.path.startswith('/api/') and request.is_json:
+            from backend.validation import validate_payload
+            validate_payload(request.get_json())
+
+    @app.errorhandler(HTTPException)
+    def http_error(error):
+        if request.path.startswith('/api/'):
+            return jsonify({'error': error.description}), error.code
+        return error
     if (os.environ.get('VERCEL') or os.environ.get('FLASK_ENV') == 'production') and not app.config.get('SECRET_KEY'):
         raise RuntimeError('SECRET_KEY is required in production.')
 
@@ -66,6 +83,8 @@ def create_app(config_class=Config):
 
     @app.route('/<path:filename>')
     def serve_frontend(filename):
+        if filename.startswith('api/'):
+            return jsonify({'error': 'Resource not found'}), 404
         file_path = os.path.join(frontend_folder, filename)
         if os.path.exists(file_path) and os.path.isfile(file_path):
             return send_from_directory(frontend_folder, filename)

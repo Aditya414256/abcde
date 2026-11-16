@@ -254,7 +254,7 @@ class OrderService:
         for inv in inventories:
             pharmacy = inv.pharmacy
             if (pharmacy and pharmacy.is_active and pharmacy.is_verified
-                    and pharmacy.supports_pickup and pharmacy.latitude and pharmacy.longitude):
+                    and pharmacy.supports_pickup and pharmacy.latitude is not None and pharmacy.longitude is not None):
                 dist = LocationService.haversine_distance(
                     user_lat, user_lon, pharmacy.latitude, pharmacy.longitude
                 )
@@ -303,7 +303,7 @@ class OrderService:
             if pharmacy and pharmacy.is_active and pharmacy.is_verified and pharmacy.supports_pickup:
                 dist = None
                 if (user_lat is not None and user_lon is not None
-                        and pharmacy.latitude and pharmacy.longitude):
+                        and pharmacy.latitude is not None and pharmacy.longitude is not None):
                     dist = LocationService.haversine_distance(
                         float(user_lat), float(user_lon),
                         pharmacy.latitude, pharmacy.longitude,
@@ -357,7 +357,7 @@ class OrderService:
             if pharmacy and pharmacy.is_active and pharmacy.is_verified and pharmacy.supports_delivery:
                 dist = None
                 if (user_lat is not None and user_lon is not None
-                        and pharmacy.latitude and pharmacy.longitude):
+                        and pharmacy.latitude is not None and pharmacy.longitude is not None):
                     dist = LocationService.haversine_distance(
                         user_lat, user_lon, pharmacy.latitude, pharmacy.longitude
                     )
@@ -401,7 +401,9 @@ class OrderService:
         For REJECTED orders, the customer-facing message is always:
         "Your order was not taken." — with the reason shown separately.
         """
-        order = db.session.get(Order, order_id)
+        # Serialize transitions on the same order as well as inventory deductions.
+        # Refresh an identity-map instance after waiting on a concurrent transition.
+        order = Order.query.filter_by(id=order_id).populate_existing().with_for_update().first()
         if not order:
             raise ValueError("Order not found.")
 

@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 window.loadAdminData = async function() {
     await loadStats();
     await loadPharmacies();
+    await loadAdminPrescriptions();
 };
 
 async function loadStats() {
@@ -76,6 +77,7 @@ async function loadPharmacies() {
                         <div>
                             <strong style="color:#0f172a;">Drug License Number:</strong><br>
                             <span style="font-family:monospace; font-size:0.95rem; color:#0369a1; font-weight:600;">${escapeHtml(p.license_number)}</span>
+                            ${p.has_verification_doc ? `<p><a href="/api/pharmacy/verification-doc?pharmacy_id=${p.id}" target="_blank" rel="noopener">View Verification Document</a></p>` : '<p>No verification document uploaded.</p>'}
                         </div>
                         <div>
                             <strong style="color:#0f172a;">Owner:</strong><br>
@@ -133,6 +135,31 @@ window.toggleStoreActive = async function(pharmacyId) {
     } catch (err) {
         alert('Toggle failed: ' + err.message);
     }
+};
+
+async function loadAdminPrescriptions() {
+    const container = document.getElementById('admin-prescriptions-list');
+    try {
+        const {prescriptions} = await API.get('/api/admin/prescriptions?status=PENDING');
+        container.innerHTML = prescriptions.length ? prescriptions.map(p => `
+            <article class="portal-form">
+                <h3>Prescription #${p.id}</h3>
+                <p>${escapeHtml(p.original_filename)}</p>
+                <a href="/api/prescriptions/${p.id}/file" target="_blank" rel="noopener">View Prescription File</a>
+                <p><button class="login" onclick="adminReviewPrescription(${p.id}, 'APPROVED')">Approve Prescription</button>
+                <button class="login" onclick="adminReviewPrescription(${p.id}, 'REJECTED')">Reject Prescription</button></p>
+            </article>`).join('') : '<p>No prescriptions awaiting review.</p>';
+    } catch (e) { container.textContent=e.message; }
+}
+
+window.adminReviewPrescription = async function(id, status) {
+    const notes = status === 'REJECTED' ? prompt('Reason for rejection:') : null;
+    if (status === 'REJECTED' && !notes?.trim()) return;
+    if (status === 'APPROVED' && !confirm('Have you reviewed the file and confirmed the prescription is valid?')) return;
+    try {
+        await API.post(`/api/admin/prescriptions/${id}/review`,{status,notes});
+        await loadAdminPrescriptions();
+    } catch (e) { alert(e.message); }
 };
 
 function escapeHtml(str) {

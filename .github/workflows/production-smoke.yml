@@ -1,9 +1,7 @@
 name: MediFind production smoke test
 
 on:
-  push:
-    branches:
-      - main
+  deployment_status:
   workflow_dispatch:
 
 permissions:
@@ -11,11 +9,13 @@ permissions:
 
 jobs:
   smoke:
+    if: github.event_name == 'workflow_dispatch' || (github.event.deployment_status.state == 'success' && (github.event.deployment.environment == 'Production' || github.event.deployment.environment == 'production'))
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
       - name: Verify production health and public endpoints
         env:
+          EXPECTED_SHA: ${{ github.event.deployment.sha || github.sha }}
           MEDIFIND_BASE_URL: https://medifind-xpro4.vercel.app
         run: |
           python - <<'PY'
@@ -32,14 +32,16 @@ jobs:
                   data = response.read(2_000_000)
                   return response.status, json.loads(data.decode('utf-8'))
 
-          # Wait for the newly deployed backend health-check semantics, not an earlier build.
+          # Verify the deployed commit, database, and storage together before passing.
           healthy = False
           for attempt in range(24):
               try:
                   status, body = get('/api/health')
-                  if status == 200 and body.get('status') == 'healthy' and body.get('database') == 'available':
-                      healthy = True
-                      break
+                  if status == 200 and body.get('status') == 'healthy' and body.get('database') == 'available' and body.get('version') == os.environ['EXPECTED_SHA']:
+                      storage_status, storage = get('/api/health/storage')
+                      if storage_status == 200 and storage.get('storage') == 'available':
+                          healthy = True
+                          break
               except (urllib.error.URLError, ValueError, TimeoutError) as exc:
                   print('Waiting for production:', str(exc)[:120])
               time.sleep(10)
