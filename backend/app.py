@@ -19,7 +19,7 @@ def create_app(config_class=Config):
         if request.path.startswith('/api/') and ('latitude' in request.args or 'longitude' in request.args):
             from backend.validation import coordinates
             coordinates(request.args.get('latitude'), request.args.get('longitude'))
-        if request.path.startswith('/api/') and request.is_json:
+        if request.path.startswith('/api/') and request.method in ('POST', 'PUT', 'PATCH', 'DELETE') and request.is_json:
             from backend.validation import validate_payload
             validate_payload(request.get_json())
 

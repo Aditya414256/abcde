@@ -1,6 +1,8 @@
 name: MediFind production smoke test
 
 on:
+  push:
+    branches: [main]
   deployment_status:
   workflow_dispatch:
 
@@ -9,7 +11,7 @@ permissions:
 
 jobs:
   smoke:
-    if: github.event_name == 'workflow_dispatch' || (github.event.deployment_status.state == 'success' && (github.event.deployment.environment == 'Production' || github.event.deployment.environment == 'production'))
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || (github.event.deployment_status.state == 'success' && (github.event.deployment.environment == 'Production' || github.event.deployment.environment == 'production'))
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:

@@ -110,6 +110,7 @@
 
         <section id="tab-settings" style="display:none;">
             <form id="pharmacy-settings-form" class="portal-form">
+                <fieldset id="store-settings-fields" disabled style="border:0; padding:0; margin:0; min-width:0;">
                 <h2>Store location and services</h2>
                 <p>Set your store’s location so customers can see accurate distances.</p>
                 <button type="button" class="login" id="store-use-location">Use My Current Location</button>
@@ -122,6 +123,8 @@
                 <label><input id="store-delivery" type="checkbox"> Offer delivery</label>
                 <label>Delivery fee (₹) <input id="store-delivery-fee" type="number" min="0" step="0.01" required></label>
                 <button type="submit" class="search-button">Save Store Settings</button>
+                </fieldset>
+                <button type="button" class="login" onclick="loadPharmacySettings()">Reload Store Settings</button>
                 <p id="settings-message" role="status"></p>
             </form>
             <form id="verification-upload-form" class="portal-form">
