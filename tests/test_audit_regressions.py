@@ -47,6 +47,13 @@ def test_bad_registration_is_400(app, body):
     assert r.is_json
 
 
+def test_empty_get_with_json_header_is_not_parsed_as_a_body(app):
+    client = app.test_client()
+    for path in ('/api/medicines/search?q=dolo', '/api/pharmacies', '/api/auth/current-user'):
+        assert client.get(path, headers={'Content-Type':'application/json'}).status_code == 200
+    assert client.get('/api/orders/my-orders', headers={'Content-Type':'application/json'}).status_code == 401
+
+
 def test_pharmacy_password_policy_and_partial_coordinates(app):
     c=app.test_client()
     assert c.post('/api/auth/register-pharmacy',json=registration(password='x',confirm_password='x')).status_code==400

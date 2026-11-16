@@ -1,7 +1,13 @@
 // Owner-only setup controls. The API derives ownership from the authenticated session.
+let settingsLoadSequence = 0;
 window.loadPharmacySettings = async function() {
+    const sequence = ++settingsLoadSequence;
+    const fields = document.getElementById('store-settings-fields');
+    fields.disabled = true;
+    document.getElementById('settings-message').textContent = 'Loading store settings…';
     try {
         const {user} = await API.getCurrentUser();
+        if (sequence !== settingsLoadSequence) return;
         const p = user.pharmacy;
         document.getElementById('store-latitude').value = p.latitude ?? '';
         document.getElementById('store-longitude').value = p.longitude ?? '';
@@ -9,7 +15,11 @@ window.loadPharmacySettings = async function() {
         document.getElementById('store-delivery').checked = p.supports_delivery;
         document.getElementById('store-delivery-fee').value = p.delivery_fee ?? 0;
         document.getElementById('verification-view').hidden = !p.has_verification_doc;
-    } catch (e) { document.getElementById('settings-message').textContent = e.message; }
+        fields.disabled = false;
+        document.getElementById('settings-message').textContent = '';
+    } catch (e) {
+        if (sequence === settingsLoadSequence) document.getElementById('settings-message').textContent = e.message;
+    }
 };
 
 document.addEventListener('DOMContentLoaded', () => {

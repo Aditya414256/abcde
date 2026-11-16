@@ -30,6 +30,12 @@ test('new pharmacy can set location, upload license and add first inventory item
     const registered=await page.request.post('/api/auth/register-pharmacy',{data});
     expect(registered.status()).toBe(201);
     const pharmacy=(await registered.json()).pharmacy;
+    // Slow profile reads used to overwrite a coordinate typed before loading finished.
+    await page.route('**/api/auth/current-user',async route=>{
+        const response=await route.fetch();
+        await new Promise(resolve=>setTimeout(resolve,300));
+        await route.fulfill({response});
+    });
     await page.goto('/pharmacy-dashboard.html?setup=1');
     await page.locator('#store-latitude').fill('21.17');
     await page.locator('#store-longitude').fill('72.83');
@@ -37,6 +43,9 @@ test('new pharmacy can set location, upload license and add first inventory item
     await page.locator('#store-delivery-fee').fill('20');
     await page.getByRole('button',{name:'Save Store Settings'}).click();
     await expect(page.locator('#settings-message')).toHaveText('Store settings saved.');
+    await expect(page.locator('#store-latitude')).toHaveValue('21.17');
+    await expect(page.locator('#store-longitude')).toHaveValue('72.83');
+    await page.unroute('**/api/auth/current-user');
     await page.locator('#verification-file').setInputFiles({name:'license.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4 browser test')});
     await page.getByRole('button',{name:'Upload Document',exact:true}).click();
     await expect(page.locator('#verification-message')).toHaveText('Document uploaded successfully.');
